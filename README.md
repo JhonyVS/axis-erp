@@ -17,10 +17,15 @@ npm run dev      # http://localhost:5180
   rather than spinning. Nothing is verified and the screen says so.
 - **A live component gallery** at `/components`: every primitive, interactive, with its
   hover, focus, press, disabled, loading and empty states reachable by actually using them.
-- **6 themes × light/dark**, switched with one click. Every colour is *derived* from a
-  WCAG target by `scripts/build-themes.mjs`, never picked by eye — chroma is pushed to the
-  sRGB gamut shell at whatever lightness the contrast solver lands on. `npm run tokens`
-  verifies 492 colour pairs and fails the build if any misses.
+- **11 themes × light/dark**, switched with one click, and grouped in the picker by
+  **character** — matte, muted, vivid, contrast — because how loud a screen is allowed to
+  be is the decision someone makes for the hours they sit in front of it, and hue is only
+  the preference they express afterwards. Every colour is *derived* from a WCAG target by
+  `scripts/build-themes.mjs`, never picked by eye: chroma is placed relative to the sRGB
+  gamut shell at whatever lightness the contrast solver lands on, and how far up that
+  shell each role sits is the theme's own dial. `npm run tokens` verifies 946 colour pairs
+  and fails the build if any misses — including for the matte palettes, which is the point:
+  calm is a chroma decision and must not become a contrast concession.
 - **Synthesised interface sounds** (Web Audio, zero audio files), with a volume control
   and an off switch.
 - **AI assistant dock** with visible tool calls, streamed answers, structured result

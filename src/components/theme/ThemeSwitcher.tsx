@@ -17,8 +17,21 @@ import { Segmented } from '@/components/ui/segmented';
  * The swatches are real colours from the generated manifest, not hand-maintained
  * approximations, so a change to a theme's spec is reflected in its preview
  * automatically. Previewing the theme you are not currently in is the whole job of this
- * control; a list of names would make the user try all six to find out what they look like.
+ * control; a list of names would make the user open every one to find out what it looks like.
+ *
+ * The list is grouped by CHARACTER — the chroma register — and not by hue, because that
+ * is the axis a person actually chooses along: how loud the screen is allowed to be for
+ * the hours they will spend in front of it. Hue is the preference you express afterwards,
+ * inside the register you can live with. Grouping by hue would offer eleven variations of
+ * one decision and hide the decision itself.
  */
+
+const CHARACTERS = [
+  { key: 'matte', label: 'Matte', note: 'calmest — for a full shift' },
+  { key: 'muted', label: 'Muted', note: 'coloured, voice kept down' },
+  { key: 'vivid', label: 'Vivid', note: 'maximum signal' },
+  { key: 'contrast', label: 'Contrast', note: 'AAA body text' },
+] as const;
 
 function ThemeSwatch({ id, name, blurb }: { id: string; name: string; blurb: string }) {
   const { theme, setTheme, mode } = usePrefs();
@@ -115,13 +128,32 @@ export function ThemeSwitcher() {
             </section>
 
             <section className="space-y-1.5">
-              <h4 className="px-0.5 text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
-                Theme
-              </h4>
-              <div className="space-y-1">
-                {THEMES.map((t) => (
-                  <ThemeSwatch key={t.id} id={t.id} name={t.name} blurb={t.blurb} />
-                ))}
+              <div className="flex items-baseline justify-between gap-2 px-0.5">
+                <h4 className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
+                  Theme
+                </h4>
+                {/* Says what the grouping means, so the headings are not a puzzle. */}
+                <p className="text-2xs text-fg-muted">grouped by chroma, not hue</p>
+              </div>
+
+              {/* Eleven themes do not fit a popover. The list scrolls; the sections do not
+                  collapse, because a collapsed group is a theme nobody finds. */}
+              <div className="max-h-[17.5rem] space-y-2.5 overflow-y-auto pr-0.5">
+                {CHARACTERS.map(({ key, label, note }) => {
+                  const group = THEMES.filter((t) => t.character === key);
+                  if (group.length === 0) return null;
+
+                  return (
+                    <div key={key} className="space-y-1">
+                      <p className="px-0.5 text-2xs font-medium text-fg">
+                        {label} <span className="font-normal text-fg-muted">· {note}</span>
+                      </p>
+                      {group.map((t) => (
+                        <ThemeSwatch key={t.id} id={t.id} name={t.name} blurb={t.blurb} />
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 

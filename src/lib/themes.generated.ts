@@ -3,6 +3,8 @@
 export interface ThemeMeta {
   id: string;
   name: string;
+  /** Chroma register, not hue: the axis the menu is grouped by. */
+  character: 'matte' | 'muted' | 'vivid' | 'contrast';
   blurb: string;
   swatch: { light: string[]; dark: string[] };
   /** The sign-in ground — the same in both modes. */
@@ -11,8 +13,114 @@ export interface ThemeMeta {
 
 export const THEMES: ThemeMeta[] = [
   {
+    "id": "slate-matte",
+    "name": "Slate Matte",
+    "character": "matte",
+    "blurb": "Near-neutral page, dusty slate action. Chroma pulled right back for a shift.",
+    "swatch": {
+      "light": [
+        "#f8f8f8",
+        "#ced8e8",
+        "#5e81b4",
+        "#1a1c1e"
+      ],
+      "dark": [
+        "#0c0e0f",
+        "#243650",
+        "#5e81b4",
+        "#f5f6f6"
+      ]
+    },
+    "loginBg": "#070a0e"
+  },
+  {
+    "id": "stone-matte",
+    "name": "Stone Matte",
+    "character": "matte",
+    "blurb": "Warm paper instead of a white lamp, with the same slate-blue action.",
+    "swatch": {
+      "light": [
+        "#efe9e2",
+        "#ced8e8",
+        "#5e81b4",
+        "#221a12"
+      ],
+      "dark": [
+        "#120c07",
+        "#243650",
+        "#5e81b4",
+        "#f9f5f1"
+      ]
+    },
+    "loginBg": "#0c0a07"
+  },
+  {
+    "id": "clay-matte",
+    "name": "Clay Matte",
+    "character": "matte",
+    "blurb": "A terracotta action instead of a blue one, at the same low chroma.",
+    "swatch": {
+      "light": [
+        "#f8f8f7",
+        "#e9d1ce",
+        "#bf6f65",
+        "#1d1b19"
+      ],
+      "dark": [
+        "#0f0d0c",
+        "#4f2925",
+        "#bf6f65",
+        "#f7f5f5"
+      ]
+    },
+    "loginBg": "#0d0907"
+  },
+  {
+    "id": "steel",
+    "name": "Steel",
+    "character": "muted",
+    "blurb": "The conventional ERP blue, stopped well short of electric. Six-hue charts.",
+    "swatch": {
+      "light": [
+        "#f8f8f8",
+        "#c8d9f3",
+        "#487fd0",
+        "#191c1e"
+      ],
+      "dark": [
+        "#0c0e0f",
+        "#18355f",
+        "#487fd0",
+        "#f5f6f7"
+      ]
+    },
+    "loginBg": "#060b0f"
+  },
+  {
+    "id": "mono-blue",
+    "name": "Mono Blue",
+    "character": "muted",
+    "blurb": "Steel exactly, except the chart series are tonal steps of the one blue.",
+    "swatch": {
+      "light": [
+        "#f8f8f8",
+        "#c8d9f3",
+        "#487fd0",
+        "#191c1e"
+      ],
+      "dark": [
+        "#0c0e0f",
+        "#18355f",
+        "#487fd0",
+        "#f5f6f7"
+      ]
+    },
+    "loginBg": "#060b0f"
+  },
+  {
     "id": "graphite",
     "name": "Graphite",
+    "character": "vivid",
     "blurb": "Electric blue on cool graphite. High signal, high contrast.",
     "swatch": {
       "light": [
@@ -33,6 +141,7 @@ export const THEMES: ThemeMeta[] = [
   {
     "id": "nordic",
     "name": "Nordic",
+    "character": "vivid",
     "blurb": "Saturated cyan on deep slate. Cold, sharp, legible at distance.",
     "swatch": {
       "light": [
@@ -53,6 +162,7 @@ export const THEMES: ThemeMeta[] = [
   {
     "id": "ember",
     "name": "Ember",
+    "character": "vivid",
     "blurb": "Hot amber on warm sand. Built for the warehouse floor.",
     "swatch": {
       "light": [
@@ -73,6 +183,7 @@ export const THEMES: ThemeMeta[] = [
   {
     "id": "violet",
     "name": "Violet",
+    "character": "vivid",
     "blurb": "Vivid magenta-violet. Maximum brand presence.",
     "swatch": {
       "light": [
@@ -93,6 +204,7 @@ export const THEMES: ThemeMeta[] = [
   {
     "id": "forest",
     "name": "Forest",
+    "character": "vivid",
     "blurb": "Punchy emerald on warm neutral. Distinct from every status colour.",
     "swatch": {
       "light": [
@@ -113,6 +225,7 @@ export const THEMES: ThemeMeta[] = [
   {
     "id": "contrast",
     "name": "High Contrast",
+    "character": "contrast",
     "blurb": "Pure achromatic surfaces, AAA body text, saturated accents.",
     "swatch": {
       "light": [
@@ -132,4 +245,4 @@ export const THEMES: ThemeMeta[] = [
   }
 ];
 
-export const DEFAULT_THEME = 'graphite';
+export const DEFAULT_THEME = 'slate-matte';

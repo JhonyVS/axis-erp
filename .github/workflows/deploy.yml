@@ -24,6 +24,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The colour system's guarantee is only a guarantee if it is checked here. This
+      # regenerates the palettes and fails the deploy if any of the 946 pairs misses its
+      # WCAG target — including a hand-edit of the generated themes.css, which the
+      # regeneration would silently overwrite and the audit would then catch.
+      - run: npm run tokens
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

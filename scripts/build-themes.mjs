@@ -230,7 +230,24 @@ const PUNCH = {
   surface: 0.08, // the neutral ladder
   text: 0.17, // neutral text
   border: 0.22,
+  login: 0.5, // the sign-in ground, which carries more chroma than any surface would
 };
+
+/**
+ * CHARACTER presets — the vocabulary a theme spec overrides `PUNCH` with.
+ *
+ * Character-first harmony, after Ellen Divers: hue is a weaker predictor of emotional
+ * response than chroma and lightness, and a muted palette reads calm across MANY hues.
+ * A menu that varies only hue therefore cannot offer the choice that actually matters
+ * for a screen someone sits in front of for eight hours; a menu that varies chroma can.
+ *
+ * These vary chroma and nothing else — same hues, same lightness solver, same contrast
+ * targets. Every palette built from them still clears WCAG, because contrast is carried
+ * by LIGHTNESS while chroma only carries volume. That separation is what makes a matte
+ * theme possible at all, rather than merely dimmer and illegible.
+ */
+const MATTE = { solid: 0.4, fg: 0.44, soft: 0.42, softFg: 0.58, line: 0.46, chart: 0.42, login: 0.26 };
+const MUTED = { solid: 0.62, fg: 0.66, soft: 0.68, softFg: 0.74, line: 0.7, chart: 0.6, login: 0.38 };
 
 /**
  * Chroma ceilings for the tinted fills, in absolute OKLCH chroma.
@@ -254,9 +271,80 @@ const SOFT_CAP = { light: 0.085, dark: 0.115 };
  * theme, or the colour stops carrying meaning.
  */
 const THEMES = [
+  /* ---- Matte. Chroma pulled right back; built to be sat in front of for a full day.
+   *
+   * The three of them are one menu, not three moods: the PAGE is cool or warm, and the
+   * ACTION is cool or warm, and you pick the pair you want to spend a shift inside. Hue
+   * 258 for the cool action and 28 for the warm one are not free choices — see the
+   * presence note at the bottom of this file for why the obvious teal is not on the menu.
+   */
+  {
+    id: 'slate-matte',
+    name: 'Slate Matte',
+    character: 'matte',
+    blurb: 'Near-neutral page, dusty slate action. Chroma pulled right back for a shift.',
+    neutralHue: 250,
+    tint: 0.55,
+    primaryHue: 258,
+    punch: MATTE,
+  },
+  {
+    id: 'stone-matte',
+    name: 'Stone Matte',
+    character: 'matte',
+    blurb: 'Warm paper instead of a white lamp, with the same slate-blue action.',
+    neutralHue: 68,
+    tint: 3.2,
+    primaryHue: 258,
+    punch: MATTE,
+    paper: true,
+  },
+  {
+    id: 'clay-matte',
+    name: 'Clay Matte',
+    character: 'matte',
+    blurb: 'A terracotta action instead of a blue one, at the same low chroma.',
+    neutralHue: 62,
+    tint: 0.8,
+    primaryHue: 28,
+    punch: MATTE,
+  },
+
+  /* ---- Muted. Held back from electric, still unmistakably coloured. -----------------
+   *
+   * Steel and Mono Blue are deliberately the SAME palette: same neutral, same primary,
+   * same register. The only difference between them is how the chart series are built —
+   * six hues around the wheel, or six tonal steps of the one primary. Presenting them as
+   * a matched pair is what makes that a decision someone can actually judge instead of a
+   * preference buried in two unrelated themes.
+   */
+  {
+    id: 'steel',
+    name: 'Steel',
+    character: 'muted',
+    blurb: 'The conventional ERP blue, stopped well short of electric. Six-hue charts.',
+    neutralHue: 240,
+    tint: 0.9,
+    primaryHue: 258,
+    punch: MUTED,
+  },
+  {
+    id: 'mono-blue',
+    name: 'Mono Blue',
+    character: 'muted',
+    blurb: 'Steel exactly, except the chart series are tonal steps of the one blue.',
+    neutralHue: 240,
+    tint: 0.9,
+    primaryHue: 258,
+    punch: MUTED,
+    monoChart: true,
+  },
+
+  /* ---- Vivid. The original set: maximum signal, and the loudest thing on the menu. -- */
   {
     id: 'graphite',
     name: 'Graphite',
+    character: 'vivid',
     blurb: 'Electric blue on cool graphite. High signal, high contrast.',
     neutralHue: 258,
     tint: 1,
@@ -265,6 +353,7 @@ const THEMES = [
   {
     id: 'nordic',
     name: 'Nordic',
+    character: 'vivid',
     blurb: 'Saturated cyan on deep slate. Cold, sharp, legible at distance.',
     neutralHue: 220,
     tint: 1.5,
@@ -273,6 +362,7 @@ const THEMES = [
   {
     id: 'ember',
     name: 'Ember',
+    character: 'vivid',
     blurb: 'Hot amber on warm sand. Built for the warehouse floor.',
     neutralHue: 62,
     tint: 1.5,
@@ -281,6 +371,7 @@ const THEMES = [
   {
     id: 'violet',
     name: 'Violet',
+    character: 'vivid',
     blurb: 'Vivid magenta-violet. Maximum brand presence.',
     neutralHue: 300,
     tint: 1.3,
@@ -289,6 +380,7 @@ const THEMES = [
   {
     id: 'forest',
     name: 'Forest',
+    character: 'vivid',
     blurb: 'Punchy emerald on warm neutral. Distinct from every status colour.',
     neutralHue: 155,
     tint: 1.2,
@@ -297,6 +389,7 @@ const THEMES = [
   {
     id: 'contrast',
     name: 'High Contrast',
+    character: 'contrast',
     blurb: 'Pure achromatic surfaces, AAA body text, saturated accents.',
     neutralHue: 0,
     tint: 0,
@@ -318,6 +411,17 @@ const STATUS = {
  * ------------------------------------------------------------------ */
 
 function buildMode(spec, mode) {
+  /**
+   * The theme's own chroma dial, merged over the global table.
+   *
+   * `PUNCH` is the product's default loudness; a theme may override any role of it. That
+   * is what makes CHARACTER a first-class axis of the menu rather than something you can
+   * only fake by picking a duller hue — the finding this rests on is that calm comes from
+   * chroma and lightness, not from hue, so a muted palette reads calm at ANY hue and a
+   * hue-only menu cannot offer the choice at all.
+   */
+  const P = { ...PUNCH, ...(spec.punch ?? {}) };
+
   const dark = mode === 'dark';
   const hc = !!spec.highContrast;
   const nh = spec.neutralHue;
@@ -328,11 +432,28 @@ function buildMode(spec, mode) {
 
   // Surface ladder. Light mode puts the card ABOVE the page (white on off-white);
   // dark mode inverts that relationship — a raised surface is lighter, not darker.
+  /**
+   * `paper` lowers the light-mode ladder off the top of the lightness axis.
+   *
+   * Two things come out of it, and the second one is the reason it exists at all:
+   *
+   *  - The page stops being a lamp. A near-white page is the brightest thing in the room
+   *    for eight hours; dropping it to 0.94 keeps the card above it and takes the glare
+   *    out without going anywhere near dark mode, which is the option people actually
+   *    want when they say white hurts.
+   *  - `neutralHue` becomes VISIBLE. At L 0.979 the sRGB shell has so little room that
+   *    every theme's page resolves to the same near-white regardless of its hue — warm
+   *    and cool pages were a distinction the tokens could not express in light mode, and
+   *    only ever showed up in dark. At 0.94 there is chroma to spend, so warm paper reads
+   *    as warm paper.
+   */
   const L = dark
     ? { bg: hc ? 0.11 : 0.161, surface: hc ? 0.17 : 0.199, s2: hc ? 0.23 : 0.249, s3: hc ? 0.145 : 0.179 }
-    : { bg: hc ? 1.0 : 0.979, surface: 1.0, s2: hc ? 0.95 : 0.964, s3: hc ? 0.962 : 0.973 };
+    : spec.paper
+      ? { bg: 0.937, surface: 0.988, s2: 0.951, s3: 0.966 }
+      : { bg: hc ? 1.0 : 0.979, surface: 1.0, s2: hc ? 0.95 : 0.964, s3: hc ? 0.962 : 0.973 };
 
-  const sPunch = PUNCH.surface * tint;
+  const sPunch = P.surface * tint;
   const bg = rel(L.bg, dark ? sPunch * 1.6 : sPunch, nh);
   const surface = rel(L.surface, dark ? sPunch * 1.5 : sPunch * 0.25, nh);
   const surface2 = rel(L.s2, dark ? sPunch * 1.5 : sPunch * 1.1, nh);
@@ -341,18 +462,27 @@ function buildMode(spec, mode) {
   /**
    * Foregrounds are solved against `surface-2`, NOT against `surface`.
    *
-   * surface-2 is the hover/raised tint, and it is the lower-contrast of the two in both
-   * modes (a shade darker under light, a shade lighter under dark). Muted text appears on
-   * both — table headers, hovered rows, card sub-headers — so solving against the card
+   * surface-2 is the hover/raised tint, and it is USUALLY the lower-contrast of the two in
+   * both modes (a shade darker under light, a shade lighter under dark). Muted text appears
+   * on both — table headers, hovered rows, card sub-headers — so solving against the card
    * alone produces a palette that quietly fails the moment the cursor lands on a row.
    * Solving the worst case makes the better case free.
+   *
+   * "Usually" is doing real work in that sentence, and it used to be an assumption rather
+   * than a measurement: on a `paper` theme the PAGE drops below surface-2 and becomes the
+   * worst case itself, at which point a palette solved against surface-2 misses 4.5:1 on
+   * the page by a tenth — which is exactly what the audit caught the first time a paper
+   * theme was generated. So the worst case is now computed, not assumed. The comparison
+   * leaves every non-paper theme byte-identical, because for those surface-2 still wins.
    */
-  const worst = surface2;
+  const worst = dark
+    ? (bg.L > surface2.L ? bg : surface2)
+    : (bg.L < surface2.L ? bg : surface2);
 
-  const fg = rel(dark ? (hc ? 1.0 : 0.972) : hc ? 0.0 : 0.225, PUNCH.text * tint * 0.7, nh);
+  const fg = rel(dark ? (hc ? 1.0 : 0.972) : hc ? 0.0 : 0.225, P.text * tint * 0.7, nh);
 
   const fgMuted = solveL({
-    relC: PUNCH.text * tint,
+    relC: P.text * tint,
     H: nh,
     against: worst,
     target: hc ? 7 : AA_TEXT,
@@ -362,7 +492,7 @@ function buildMode(spec, mode) {
   // `fg-subtle` is for placeholders, disabled labels and decorative glyphs only.
   // It targets the 3:1 non-text bar, so it must never carry information on its own.
   const fgSubtle = solveL({
-    relC: PUNCH.text * tint,
+    relC: P.text * tint,
     H: nh,
     against: worst,
     target: hc ? AA_TEXT : AA_UI,
@@ -372,7 +502,7 @@ function buildMode(spec, mode) {
   // A hairline is not a control boundary: 1.4:1 is enough to separate two adjacent
   // surfaces, and anything stronger draws a cage around every card.
   const border = solveL({
-    relC: PUNCH.border * tint,
+    relC: P.border * tint,
     H: nh,
     against: worst,
     target: hc ? AA_UI : 1.4,
@@ -381,7 +511,7 @@ function buildMode(spec, mode) {
 
   // `border-strong` IS a control boundary (inputs, toggles), so it takes the 3:1 rule.
   const borderStrong = solveL({
-    relC: PUNCH.border * tint,
+    relC: P.border * tint,
     H: nh,
     against: worst,
     target: AA_UI,
@@ -416,13 +546,13 @@ function buildMode(spec, mode) {
      * guarantee holds either way.
      */
     const underWhiteLabel = solveMaxChroma({
-      relC: PUNCH.solid,
+      relC: P.solid,
       H: hue,
       against: cand.light,
       target: AA_TEXT,
     });
     const underDarkLabel = solveMaxChroma({
-      relC: PUNCH.solid,
+      relC: P.solid,
       H: hue,
       against: cand.dark,
       target: AA_TEXT,
@@ -430,7 +560,7 @@ function buildMode(spec, mode) {
     const solid = underDarkLabel.C > underWhiteLabel.C ? underDarkLabel : underWhiteLabel;
 
     const fgOnSurface = solveL({
-      relC: PUNCH.fg,
+      relC: P.fg,
       H: hue,
       against: worst,
       target: hc ? 7 : AA_TEXT,
@@ -442,18 +572,18 @@ function buildMode(spec, mode) {
     // Dropping to 0.88 more than doubles the chroma available, and the fill finally
     // reads as coloured paper instead of as a slightly dirty white.
     const soft = dark
-      ? rel(hc ? 0.30 : 0.33, PUNCH.soft, hue, SOFT_CAP.dark)
-      : rel(hc ? 0.86 : 0.88, PUNCH.soft, hue, SOFT_CAP.light);
+      ? rel(hc ? 0.30 : 0.33, P.soft, hue, SOFT_CAP.dark)
+      : rel(hc ? 0.86 : 0.88, P.soft, hue, SOFT_CAP.light);
 
     const softFg = solveL({
-      relC: PUNCH.softFg,
+      relC: P.softFg,
       H: hue,
       against: soft,
       target: hc ? 7 : AA_TEXT,
       towards: AWAY,
     });
 
-    const line = solveL({ relC: PUNCH.line, H: hue, against: worst, target: AA_UI, towards: AWAY });
+    const line = solveL({ relC: P.line, H: hue, against: worst, target: AA_UI, towards: AWAY });
 
     return { solid, on: onColor(solid, hue), fg: fgOnSurface, soft, softFg, line };
   }
@@ -470,7 +600,7 @@ function buildMode(spec, mode) {
    * higher chroma than any surface would take, because at this lightness a near-neutral
    * reads as plain black and the theme identity disappears.
    */
-  const loginBg = rel(0.145, 0.5, nh);
+  const loginBg = rel(0.145, P.login, nh);
   const loginFg = rel(0.97, 0.1, nh);
   // Solved against the ground, not against a surface: this text sits directly on it.
   const loginFgMuted = solveL({ relC: 0.22, H: nh, against: loginBg, target: AA_TEXT, towards: 1 });
@@ -499,18 +629,40 @@ function buildMode(spec, mode) {
    */
   const chartHues = [0, 1, 2, 3, 4, 5].map((k) => (spec.primaryHue + k * 60) % 360);
 
-  const charts = chartHues.map((h, i) =>
-    solveL({
-      relC: PUNCH.chart,
-      H: h,
-      against: surface,
-      // Alternating the target pushes every other series further from the background,
-      // which splits the set into two lightness bands. That is what keeps six series
-      // separable in greyscale and under colour-vision deficiency, where hue alone fails.
-      target: i % 2 === 0 ? AA_UI : 4.8,
-      towards: AWAY,
-    })
-  );
+  /**
+   * `monoChart` replaces the hue spread with a TONAL RAMP of the primary — one hue, six
+   * lightness steps — which is the literal reading of "one blue, stepping down in tone".
+   *
+   * The ramp is parameterised by CONTRAST, not by lightness: each step is solved for a
+   * higher target than the last, so the separation between series is guaranteed by the
+   * same solver that guarantees legibility, and cannot be eroded by a hue whose gamut
+   * shell happens to be narrow. A ramp built by picking lightnesses looks even and is
+   * not; this one is even because it is measured.
+   *
+   * The honest trade-off, and the reason this is an ALTERNATIVE and not the default: a
+   * tonal ramp is perfectly separable in greyscale and under every colour-vision
+   * deficiency, but it carries no categorical signal — six tones of one blue say "more
+   * and less of one thing", not "six different things". A chart on this theme must label
+   * its series directly or carry a legend; it may not rely on colour to name a category.
+   */
+  const MONO_TARGETS = [3.0, 3.9, 4.9, 6.1, 7.4, 8.8];
+
+  const charts = spec.monoChart
+    ? MONO_TARGETS.map((target) =>
+        solveL({ relC: P.chart, H: spec.primaryHue, against: surface, target, towards: AWAY })
+      )
+    : chartHues.map((h, i) =>
+        solveL({
+          relC: P.chart,
+          H: h,
+          against: surface,
+          // Alternating the target pushes every other series further from the background,
+          // which splits the set into two lightness bands. That is what keeps six series
+          // separable in greyscale and under colour-vision deficiency, where hue alone fails.
+          target: i % 2 === 0 ? AA_UI : 4.8,
+          towards: AWAY,
+        })
+      );
 
   return {
     bg,
@@ -602,6 +754,39 @@ function auditMode(themeId, mode, p) {
   p.charts.forEach((ch, i) => c(`chart-${i + 1} / surface`, ch, p.surface, AA_UI));
 }
 
+/**
+ * PRESENCE — the pair the audit above does not check, reported and not enforced.
+ *
+ * Every accent is verified against the LABEL it carries, which is what guarantees the
+ * text on a button is readable. Nothing verifies the button against the PAGE it sits on,
+ * and WCAG 1.4.11 asks for 3:1 there because a fill is how you know a control is a
+ * control. The hole is invisible at high chroma — an electric blue is far from white
+ * whatever its lightness — and it opens the moment chroma comes down, which is exactly
+ * what a matte register does.
+ *
+ * Measured, at any punch: hues from roughly 190 to 235 (cyan through sky) put their
+ * widest gamut shell so close to white that the solid fill lands at 1.2-2.2:1 against a
+ * light page. That is why there is no teal on the menu — not taste, arithmetic. Hue 258
+ * and hue 28 clear 3:1 in BOTH modes, which is why the new themes use them.
+ *
+ * This is a REPORT and not a failure on purpose: enforcing it would move the accent of
+ * the already-shipped Nordic and Forest themes, and this branch exists to be compared
+ * against them, not to quietly rewrite them. Fixing it properly means letting the solid
+ * fill differ between light and dark — which most design systems do, and which is a
+ * decision for whoever owns the palette.
+ */
+const presence = [];
+function notePresence(themeId, mode, p) {
+  for (const key of ['primary', 'success', 'warning', 'danger', 'info']) {
+    presence.push({
+      theme: themeId,
+      mode,
+      label: `${key} / page`,
+      ratio: contrast(p[key].solid.rgb, p.bg.rgb),
+    });
+  }
+}
+
 const blocks = [];
 const manifest = [];
 
@@ -610,6 +795,8 @@ for (const spec of THEMES) {
   const dark = buildMode(spec, 'dark');
   auditMode(spec.id, 'light', light);
   auditMode(spec.id, 'dark', dark);
+  notePresence(spec.id, 'light', light);
+  notePresence(spec.id, 'dark', dark);
 
   const isDefault = spec.id === THEMES[0].id;
   const lightSel = isDefault ? `:root,\n  [data-theme='${spec.id}']` : `[data-theme='${spec.id}']`;
@@ -626,6 +813,7 @@ for (const spec of THEMES) {
   manifest.push({
     id: spec.id,
     name: spec.name,
+    character: spec.character,
     blurb: spec.blurb,
     swatch: {
       light: [toHex(light.bg), toHex(light.primary.soft), toHex(light.primary.solid), toHex(light.fg)],
@@ -657,7 +845,7 @@ mkdirSync(resolve(__dirname, '../src/lib'), { recursive: true });
 writeFileSync(
   resolve(__dirname, '../src/lib/themes.generated.ts'),
   `// GENERATED FILE — do not edit by hand. Source: scripts/build-themes.mjs\n\n` +
-    `export interface ThemeMeta {\n  id: string;\n  name: string;\n  blurb: string;\n  swatch: { light: string[]; dark: string[] };\n  /** The sign-in ground — the same in both modes. */\n  loginBg: string;\n}\n\n` +
+    `export interface ThemeMeta {\n  id: string;\n  name: string;\n  /** Chroma register, not hue: the axis the menu is grouped by. */\n  character: 'matte' | 'muted' | 'vivid' | 'contrast';\n  blurb: string;\n  swatch: { light: string[]; dark: string[] };\n  /** The sign-in ground — the same in both modes. */\n  loginBg: string;\n}\n\n` +
     `export const THEMES: ThemeMeta[] = ${JSON.stringify(manifest, null, 2)};\n\n` +
     `export const DEFAULT_THEME = '${THEMES[0].id}';\n`,
   'utf8'
@@ -678,6 +866,34 @@ for (const [k, n] of byTheme) {
   const f = failures.filter((x) => `${x.theme}/${x.mode}` === k);
   const mark = f.length === 0 ? 'PASS' : `FAIL (${f.length})`;
   console.log(`  ${k.padEnd(22)} ${String(n).padStart(3)} pairs   ${mark}`);
+}
+
+/* Advisory: solid fills that do not clear 3:1 against the page they sit on.
+ *
+ * Only the PRIMARY is listed line by line. It is the one that ships as a filled button on
+ * every screen, so a thin primary is a control the eye has to hunt for. The status fills
+ * are counted and not listed: success, warning and info reach the user overwhelmingly as
+ * `-soft` chips and as `-fg` text, and BOTH of those are audited above — a filled status
+ * button is rare enough that listing thirty of them every build would bury the one line
+ * that needs reading.
+ */
+const thin = presence.filter((x) => x.ratio < AA_UI);
+const thinPrimary = thin.filter((x) => x.label.startsWith('primary'));
+
+if (thin.length) {
+  console.log(`\nPresence notes  (WCAG 1.4.11, advisory - not a build failure)`);
+  if (thinPrimary.length) {
+    console.log(`  Primary fill under 3:1 against its own page:`);
+    for (const t of thinPrimary) {
+      console.log(`    ${`${t.theme}/${t.mode}`.padEnd(22)} ${t.ratio.toFixed(2)}:1`);
+    }
+  } else {
+    console.log('  Every primary fill clears 3:1 against its page.');
+  }
+  console.log(
+    `  ${thin.length - thinPrimary.length} status fills also sit under 3:1; they ship as soft chips` +
+      ` and coloured text, which are audited above.`
+  );
 }
 
 if (failures.length) {
