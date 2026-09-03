@@ -5,7 +5,7 @@ import { Check, Hexagon, Loader2, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/stores/authStore';
 import { playSound } from '@/lib/sound';
-import { WaveField } from '@/components/auth/WaveField';
+import { LoginBackdrop } from '@/components/auth/LoginBackdrop';
 import { Button } from '@/components/ui/button';
 import { Input, Field } from '@/components/ui/input';
 import { CheckboxField } from '@/components/ui/checkbox';
@@ -107,18 +107,22 @@ export function Login() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-bg text-fg">
-      {/* The waves read the live theme tokens, so this screen re-colours with the switcher
-          in the corner — the theme system proving itself before any data is on screen. */}
-      <WaveField className="pointer-events-none absolute inset-0 h-full w-full" />
+    // `bg-login` is a generated token that is the SAME in light and dark. The sign-in
+    // screen commits to one dark stage in every theme so the effects sit on a known
+    // ground — a backdrop that inverts with the mode toggle has to be tuned twice.
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-login text-login-fg">
+      {/* Stars, falling drops that splash on the water, and waves — all painted from the
+          live theme tokens, so this screen proves the theme system before any data is on
+          screen. One canvas, one animation loop. */}
+      <LoginBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
 
       {/*
-        A light scrim, only at the edges. The card carries its own opaque surface and a
-        backdrop blur, so its contrast is already guaranteed — the scrim exists for the
-        header and footer text sitting directly on the waves, and darkening the middle as
-        well just erases the animation the screen is there to show.
+        A scrim only at the edges. The card carries its own opaque surface and a backdrop
+        blur, so its contrast is already guaranteed — this exists for the header and footer
+        text sitting directly on the effects, and darkening the middle as well would erase
+        the animation the screen is there to show.
       */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/80 via-transparent to-bg/85" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-login/60 via-transparent to-login/85" />
 
       <header className="relative z-10 flex items-center justify-between p-4">
         <div className="flex items-center gap-2.5">
@@ -126,11 +130,17 @@ export function Login() {
             <Hexagon className="size-4" strokeWidth={2.5} aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-tight">Axis ERP</p>
-            <p className="text-2xs text-fg-muted">Plant North</p>
+            <p className="text-sm font-semibold tracking-tight text-login-fg">Axis ERP</p>
+            <p className="text-2xs text-login-fg-muted">Plant North</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        {/*
+          These two controls are shared components with no styling API, and they sit on the
+          fixed dark ground rather than on a themed surface — so in light mode their default
+          near-black foreground would be invisible. Scoping the override to this wrapper is
+          cheaper than adding a `className` prop to both for the sake of one screen.
+        */}
+        <div className="flex items-center gap-1 [&_button]:text-login-fg-muted [&_button:hover]:bg-login-fg/10 [&_button:hover]:text-login-fg">
           <ModeToggle />
           <ThemeSwitcher />
         </div>
@@ -141,7 +151,12 @@ export function Login() {
           initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={reduced ? { duration: 0.15 } : spring}
-          className="w-full max-w-sm rounded-xl border border-line bg-surface/90 p-6 shadow-pop backdrop-blur-xl"
+          // `text-fg` is not decoration here. The page wrapper sets `text-login-fg` for the
+          // header and footer that sit on the dark ground, and the card would otherwise
+          // inherit it — near-white text on a near-white surface. Anything with an explicit
+          // colour survives; anything that inherits (the heading) vanishes. The card owns a
+          // themed surface, so it has to re-establish the matching foreground.
+          className="w-full max-w-sm rounded-xl border border-line bg-surface/90 p-6 text-fg shadow-pop backdrop-blur-xl"
         >
           <div className="mb-5">
             <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
@@ -273,7 +288,7 @@ export function Login() {
         </motion.div>
       </main>
 
-      <footer className="relative z-10 p-4 text-center text-2xs text-fg-subtle">
+      <footer className="relative z-10 p-4 text-center text-2xs text-login-fg-muted">
         Axis ERP — interface prototype
       </footer>
     </div>

@@ -256,9 +256,35 @@ The 1.9s delay is deliberate, and so is what fills it: the card lists the steps 
 through and ticks each one off. Authentication is the one place a pause is expected, and an
 indeterminate spinner there reads as a hang where a visible sequence reads as progress.
 
-`components/auth/WaveField.tsx` paints the background on a canvas, reading the live theme
-tokens — so the sign-in screen proves the theme system before any data is on screen. It
-pauses when the tab is hidden and paints a single composed frame under reduced motion.
+### The backdrop
+
+`components/auth/LoginBackdrop.tsx` — a starfield, falling drops that splash where they
+meet the water, and layered waves, all painted from the live theme tokens. The sign-in
+screen proves the theme system before any data is on screen.
+
+**One canvas, one animation loop.** Three effect components would mean three canvases and
+three `requestAnimationFrame` callbacks fighting over the same frame budget, on a screen
+whose whole job is to look effortless. If you add an effect, add it to this loop.
+
+**The ground is `--login-bg`, and it is the SAME token in light and dark.** The sign-in
+screen commits to one dark stage in every theme so the effects sit on a known background —
+a backdrop that inverts with the mode toggle has to be tuned twice and looks wrong once.
+Two consequences to keep in mind:
+
+- Text on the ground uses `text-login-fg` / `text-login-fg-muted`, both solved against it.
+- Anything with a THEMED surface inside that page must re-establish its own foreground
+  (the card carries `text-fg`). Otherwise it inherits `text-login-fg` and you get
+  near-white text on a near-white card — invisible, and only for the elements that inherit,
+  which is why it survives a casual look.
+
+**A drop is tested against the wave surface function that draws the wave**, so a splash
+lands exactly where the water is at that instant. Layer 0 is the waterline and is given a
+drawn crest line: its fill is a soft gradient, so without the line the eye reads the
+surface lower than the maths puts it and the ripples appear to float in mid-air.
+
+Densities scale with area rather than being fixed counts, the loop suspends while the tab
+is hidden, `dt` is clamped so a long pause cannot teleport every drop to the bottom, and
+reduced motion paints one composed frame and stops.
 
 ## The component gallery is the regression surface
 

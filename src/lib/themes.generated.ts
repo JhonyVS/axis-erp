@@ -5,6 +5,8 @@ export interface ThemeMeta {
   name: string;
   blurb: string;
   swatch: { light: string[]; dark: string[] };
+  /** The sign-in ground — the same in both modes. */
+  loginBg: string;
 }
 
 export const THEMES: ThemeMeta[] = [
@@ -25,7 +27,8 @@ export const THEMES: ThemeMeta[] = [
         "#033dfa",
         "#f5f6f7"
       ]
-    }
+    },
+    "loginBg": "#040a15"
   },
   {
     "id": "nordic",
@@ -44,7 +47,8 @@ export const THEMES: ThemeMeta[] = [
         "#21d9fd",
         "#f3f6f7"
       ]
-    }
+    },
+    "loginBg": "#050b0e"
   },
   {
     "id": "ember",
@@ -63,7 +67,8 @@ export const THEMES: ThemeMeta[] = [
         "#fc7a15",
         "#f7f5f4"
       ]
-    }
+    },
+    "loginBg": "#0f0904"
   },
   {
     "id": "violet",
@@ -82,7 +87,8 @@ export const THEMES: ThemeMeta[] = [
         "#9815fb",
         "#f6f5f7"
       ]
-    }
+    },
+    "loginBg": "#0d0618"
   },
   {
     "id": "forest",
@@ -101,7 +107,8 @@ export const THEMES: ThemeMeta[] = [
         "#26fea3",
         "#f3f7f4"
       ]
-    }
+    },
+    "loginBg": "#050c07"
   },
   {
     "id": "contrast",
@@ -120,7 +127,8 @@ export const THEMES: ThemeMeta[] = [
         "#1495fb",
         "#ffffff"
       ]
-    }
+    },
+    "loginBg": "#14050a"
   }
 ];
 

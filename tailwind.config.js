@@ -33,6 +33,13 @@ export default {
         },
         ring: 'oklch(var(--ring) / <alpha-value>)',
 
+        // The sign-in ground. Identical in both modes on purpose — see build-themes.mjs.
+        login: {
+          DEFAULT: 'oklch(var(--login-bg) / <alpha-value>)',
+          fg: 'oklch(var(--login-fg) / <alpha-value>)',
+          'fg-muted': 'oklch(var(--login-fg-muted) / <alpha-value>)',
+        },
+
         ...Object.fromEntries(
           ['primary', 'success', 'warning', 'danger', 'info'].map((name) => [
             name,

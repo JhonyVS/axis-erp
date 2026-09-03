@@ -458,6 +458,23 @@ function buildMode(spec, mode) {
     return { solid, on: onColor(solid, hue), fg: fgOnSurface, soft, softFg, line };
   }
 
+  /**
+   * The sign-in ground.
+   *
+   * Deliberately NOT derived from the current mode: the login screen commits to one dark
+   * stage in every theme, so the wave field and the falling particles read the same way
+   * whichever mode the user is in. An effects backdrop that inverts with the light switch
+   * has to be tuned twice and looks wrong once.
+   *
+   * It still belongs to the theme — the hue is the theme's own neutral, pushed to a
+   * higher chroma than any surface would take, because at this lightness a near-neutral
+   * reads as plain black and the theme identity disappears.
+   */
+  const loginBg = rel(0.145, 0.5, nh);
+  const loginFg = rel(0.97, 0.1, nh);
+  // Solved against the ground, not against a surface: this text sits directly on it.
+  const loginFgMuted = solveL({ relC: 0.22, H: nh, against: loginBg, target: AA_TEXT, towards: 1 });
+
   const primary = family(spec.primaryHue);
   const success = family(STATUS.success);
   const warning = family(STATUS.warning);
@@ -500,6 +517,9 @@ function buildMode(spec, mode) {
     surface,
     surface2,
     surface3,
+    loginBg,
+    loginFg,
+    loginFgMuted,
     border,
     borderStrong,
     fg,
@@ -533,6 +553,9 @@ function emitVars(p) {
   push('fg-muted', p.fgMuted);
   push('fg-subtle', p.fgSubtle);
   push('ring', p.ring);
+  push('login-bg', p.loginBg);
+  push('login-fg', p.loginFg);
+  push('login-fg-muted', p.loginFgMuted);
 
   for (const key of ['primary', 'success', 'warning', 'danger', 'info']) {
     const f = p[key];
@@ -562,6 +585,8 @@ function auditMode(themeId, mode, p) {
   c('fg-muted / surface-2', p.fgMuted, p.surface2, AA_TEXT);
   c('fg-muted / surface-3', p.fgMuted, p.surface3, AA_TEXT);
   c('fg-muted / bg', p.fgMuted, p.bg, AA_TEXT);
+  c('login-fg / login-bg', p.loginFg, p.loginBg, 7);
+  c('login-fg-muted / login-bg', p.loginFgMuted, p.loginBg, AA_TEXT);
   c('fg-subtle / surface', p.fgSubtle, p.surface, AA_UI);
   c('fg-subtle / surface-2', p.fgSubtle, p.surface2, AA_UI);
   c('border-strong / surface', p.borderStrong, p.surface, AA_UI);
@@ -606,6 +631,7 @@ for (const spec of THEMES) {
       light: [toHex(light.bg), toHex(light.primary.soft), toHex(light.primary.solid), toHex(light.fg)],
       dark: [toHex(dark.bg), toHex(dark.primary.soft), toHex(dark.primary.solid), toHex(dark.fg)],
     },
+    loginBg: toHex(light.loginBg),
   });
 }
 
@@ -631,7 +657,7 @@ mkdirSync(resolve(__dirname, '../src/lib'), { recursive: true });
 writeFileSync(
   resolve(__dirname, '../src/lib/themes.generated.ts'),
   `// GENERATED FILE — do not edit by hand. Source: scripts/build-themes.mjs\n\n` +
-    `export interface ThemeMeta {\n  id: string;\n  name: string;\n  blurb: string;\n  swatch: { light: string[]; dark: string[] };\n}\n\n` +
+    `export interface ThemeMeta {\n  id: string;\n  name: string;\n  blurb: string;\n  swatch: { light: string[]; dark: string[] };\n  /** The sign-in ground — the same in both modes. */\n  loginBg: string;\n}\n\n` +
     `export const THEMES: ThemeMeta[] = ${JSON.stringify(manifest, null, 2)};\n\n` +
     `export const DEFAULT_THEME = '${THEMES[0].id}';\n`,
   'utf8'
