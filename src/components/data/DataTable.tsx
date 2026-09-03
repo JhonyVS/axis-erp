@@ -40,6 +40,7 @@ export function DataTable<T>({
   onRowClick,
   caption,
   initialSort,
+  highlightId,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -50,6 +51,14 @@ export function DataTable<T>({
   /** Announced to screen readers; describes what the table contains. */
   caption: string;
   initialSort?: SortState;
+  /**
+   * Row to scroll into view and flash.
+   *
+   * Creating a record in a sorted table is a small act of vanishing: the row exists, but
+   * it lands at position 40 of 65 and the user has no idea their work landed. Taking them
+   * to it costs nothing and removes the doubt.
+   */
+  highlightId?: string | number | null;
 }) {
   const [sort, setSort] = React.useState<SortState>(initialSort ?? null);
   const reduced = useReducedMotion();
@@ -77,6 +86,19 @@ export function DataTable<T>({
       return null;
     });
   };
+
+  React.useEffect(() => {
+    if (highlightId == null) return;
+    // `nearest` rather than `center`: if the row is already visible, do not yank the page.
+    const id = window.setTimeout(
+      () =>
+        document
+          .querySelector<HTMLElement>(`[data-row-id="${highlightId}"]`)
+          ?.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }),
+      60
+    );
+    return () => window.clearTimeout(id);
+  }, [highlightId, reduced]);
 
   const hideClass = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell' };
   const alignClass = { left: 'text-left', right: 'text-right', center: 'text-center' };
@@ -172,13 +194,17 @@ export function DataTable<T>({
                     duration: DUR.normal,
                     ease: EASE,
                   }}
+                  data-row-id={getRowId(row)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cn(
                     'border-b border-line last:border-0',
                     'transition-colors duration-fast',
                     onRowClick
                       ? 'cursor-pointer hover:bg-primary-soft/40 focus-within:bg-primary-soft/40'
-                      : 'hover:bg-surface-2/70'
+                      : 'hover:bg-surface-2/70',
+                    // The flash fades on its own. A permanent marker would still be there
+                    // tomorrow, meaning nothing.
+                    highlightId === getRowId(row) && 'animate-row-flash'
                   )}
                 >
                   {columns.map((col) => (

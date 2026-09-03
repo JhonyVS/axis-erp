@@ -75,9 +75,13 @@ export default {
       },
 
       borderRadius: {
-        DEFAULT: 'var(--radius)',
-        sm: 'calc(var(--radius) - 3px)',
-        md: 'calc(var(--radius) - 1px)',
+        // `--radius` is the CARD radius, and the scale is built around it — but the bare
+        // `rounded` utility must stay small. Pointing DEFAULT at the card radius turns
+        // every 16px control into a circle: a checkbox with an 8px radius is visually a
+        // radio button, which tells the user the wrong thing about how it behaves.
+        sm: '3px',
+        DEFAULT: '4px',
+        md: '6px',
         lg: 'var(--radius)',
         xl: 'calc(var(--radius) + 4px)',
         '2xl': 'calc(var(--radius) + 10px)',
@@ -121,12 +125,17 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'row-flash': {
+          '0%, 40%': { backgroundColor: 'oklch(var(--primary-soft))' },
+          '100%': { backgroundColor: 'transparent' },
+        },
       },
       animation: {
         'caret-blink': 'caret-blink 1.2s steps(1) infinite',
         shimmer: 'shimmer 1.6s infinite',
         'accordion-down': 'accordion-down var(--dur-normal) var(--ease-out)',
         'accordion-up': 'accordion-up var(--dur-fast) var(--ease-out)',
+        'row-flash': 'row-flash 2.2s var(--ease-out) forwards',
       },
     },
   },

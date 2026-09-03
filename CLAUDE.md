@@ -161,6 +161,19 @@ user just rescued. Hovering the stack pauses every timer.
 something that just happened and then leaves. If it is still true after a reload, it is a
 banner.
 
+**Data lives in `stores/dataStore.ts`, not in `mock/data.ts`.** The mock module SEEDS the
+store once; every read and write afterwards goes through the store. Importing the frozen
+module constant into a module is what made "New item" a decoration — a form can validate
+perfectly and still have nowhere to put its result. The assistant reads the store too, so
+it can never cite a count that contradicts the table on screen.
+
+**Forms.** Copy the shape in `modules/warehouse/ItemFormDialog.tsx`:
+errors on **blur** (not per keystroke), a submit button that is **never disabled** for
+invalid input (clicking reveals every error and focuses the first invalid field — a
+disabled button with no visible error is a dead end), a synchronous `useRef` guard against
+double-click on top of the `isSubmitting` state, and failure as a red `Alert` **inside**
+the dialog, which stays open.
+
 **Empty states.** "Nothing here yet" and "nothing matches your filters" are different
 problems with different fixes, so they are different components with different copy and
 different buttons. See `EmptyState` usage in `modules/warehouse/Inventory.tsx`.
@@ -199,7 +212,7 @@ src/
   styles/globals.css          the only imported stylesheet
   styles/themes.css           GENERATED
   lib/                        utils, motion tokens, sound engine, hooks
-  stores/                     prefs (theme/mode/density/sound), transient UI
+  stores/                     prefs (theme/mode/density/sound), transient UI, workspace data
   components/
     ui/                       primitives — button, badge, card, input, dialog, sheet,
                               alert, toast, checkbox, radio, slider, segmented,

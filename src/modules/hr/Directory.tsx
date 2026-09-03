@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, UserPlus, UserX, X } from 'lucide-react';
 import { dateOnly, relative } from '@/lib/utils';
 import { useDebounced, useMockQuery } from '@/lib/hooks';
-import { PEOPLE, DEPARTMENT_LIST, type Person } from '@/mock/data';
+import { DEPARTMENT_LIST, type Person } from '@/mock/data';
+import { useData } from '@/stores/dataStore';
+import { PersonFormDialog } from './PersonFormDialog';
 import { PageHeader, EmptyState, Section, StatCard } from '@/components/data/primitives';
 import { DataTable, type Column } from '@/components/data/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +24,8 @@ const STATUS_TONE = {
 
 export function Directory() {
   const [params] = useSearchParams();
+  const { people, addPerson } = useData();
+  const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [department, setDepartment] = useState('all');
   const debounced = useDebounced(search, 300);
@@ -29,12 +33,12 @@ export function Directory() {
 
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();
-    return PEOPLE.filter((p) => {
+    return people.filter((p) => {
       if (q && !`${p.name} ${p.role} ${p.department} ${p.site} ${p.email}`.toLowerCase().includes(q)) return false;
       if (department !== 'all' && p.department !== department) return false;
       return true;
     });
-  }, [debounced, department]);
+  }, [people, debounced, department]);
 
   const hasFilters = !!debounced || department !== 'all';
 
@@ -101,8 +105,8 @@ export function Directory() {
     },
   ];
 
-  const onLeave = PEOPLE.filter((p) => p.status === 'On leave').length;
-  const behind = PEOPLE.filter((p) => p.compliance < 80).length;
+  const onLeave = people.filter((p) => p.status === 'On leave').length;
+  const behind = people.filter((p) => p.compliance < 80).length;
 
   return (
     <div className="space-y-4">
@@ -111,7 +115,7 @@ export function Directory() {
         description="Everyone on site, with their department, status and training compliance."
         aiPrompt="Who is on leave right now?"
         actions={
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
             <UserPlus />
             Add person
           </Button>
@@ -119,7 +123,7 @@ export function Directory() {
       />
 
       <motion.div variants={stagger(0.05)} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Headcount" value={PEOPLE.length} loading={loading} hint="all sites" />
+        <StatCard label="Headcount" value={people.length} loading={loading} hint="all sites" />
         <StatCard label="On leave" value={onLeave} tone="warning" loading={loading} hint="today" />
         <StatCard
           label="Below 80% compliance"
@@ -130,7 +134,7 @@ export function Directory() {
         />
         <StatCard
           label="Average compliance"
-          value={PEOPLE.reduce((s, p) => s + p.compliance, 0) / PEOPLE.length}
+          value={people.length ? people.reduce((s, p) => s + p.compliance, 0) / people.length : 0}
           format={(n) => `${n.toFixed(0)}%`}
           delta={3.4}
           loading={loading}
@@ -140,7 +144,7 @@ export function Directory() {
 
       <Section
         title="Directory"
-        description={loading ? 'Loading…' : `${filtered.length} of ${PEOPLE.length} people${hasFilters ? ' match your filters' : ''}`}
+        description={loading ? 'Loading…' : `${filtered.length} of ${people.length} people${hasFilters ? ' match your filters' : ''}`}
         actions={
           hasFilters ? (
             <Button
@@ -222,7 +226,7 @@ export function Directory() {
                     Clear all filters
                   </Button>
                 ) : (
-                  <Button variant="primary" size="sm">
+                  <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
                     <UserPlus />
                     Add person
                   </Button>
@@ -232,6 +236,8 @@ export function Directory() {
           }
         />
       </Section>
+
+      <PersonFormDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={addPerson} />
     </div>
   );
 }

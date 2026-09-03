@@ -1,4 +1,5 @@
-import { ITEMS, PEOPLE, COURSES, MOVEMENTS, stockState, type Item } from '@/mock/data';
+import { MOVEMENTS, stockState, type Item } from '@/mock/data';
+import { useData } from '@/stores/dataStore';
 import { money, num, relative } from '@/lib/utils';
 
 /**
@@ -12,6 +13,15 @@ import { money, num, relative } from '@/lib/utils';
  * Swapping in a real API means replacing `answer()` and streaming the blocks it returns.
  * Nothing in the components changes.
  */
+
+/**
+ * Read the LIVE workspace, not the frozen seed data.
+ *
+ * An assistant that answers from a different copy of the data than the table on screen
+ * will eventually contradict it — and the user will believe the assistant, because it
+ * sounded certain. Pulling from the store at call time keeps the two honest.
+ */
+const snapshot = () => useData.getState();
 
 export type Block =
   | { kind: 'text'; text: string }
@@ -33,8 +43,8 @@ export interface Answer {
   source: string;
 }
 
-const lowStock = () => ITEMS.filter((i) => stockState(i) === 'low');
-const outOfStock = () => ITEMS.filter((i) => stockState(i) === 'out');
+const lowStock = () => snapshot().items.filter((i) => stockState(i) === 'low');
+const outOfStock = () => snapshot().items.filter((i) => stockState(i) === 'out');
 
 const itemRow = (i: Item) => [i.sku, i.name, `${i.onHand} ${i.uom}`, i.minStock, i.bin];
 
@@ -47,6 +57,7 @@ export const SUGGESTIONS = [
 
 export function answer(question: string): Answer {
   const q = question.toLowerCase();
+  const { items: ITEMS, people: PEOPLE, courses: COURSES } = snapshot();
 
   /* ---- Inventory: stock levels ---- */
   if (/(low|below|minimum|reorder|replenish|out of stock|shortage)/.test(q)) {

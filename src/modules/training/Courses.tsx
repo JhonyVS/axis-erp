@@ -4,7 +4,9 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, BookOpen, Clock, Plus, Search, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDebounced, useMockQuery } from '@/lib/hooks';
-import { COURSES, TRACK_LIST, PEOPLE, type Course } from '@/mock/data';
+import { TRACK_LIST, type Course } from '@/mock/data';
+import { useData } from '@/stores/dataStore';
+import { CourseFormDialog } from './CourseFormDialog';
 import { PageHeader, EmptyState, StatCard } from '@/components/data/primitives';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +25,9 @@ function expiryState(days: number | null) {
 }
 
 function CourseCard({ course }: { course: Course }) {
-  const rate = (course.completed / course.enrolled) * 100;
+  // A course created a moment ago has nobody enrolled. 0/0 is NaN, and `NaN%` on a
+  // progress bar is the kind of thing that only shows up after someone uses the feature.
+  const rate = course.enrolled > 0 ? (course.completed / course.enrolled) * 100 : 0;
   const expiry = expiryState(course.expiresInDays);
 
   return (
@@ -78,6 +82,8 @@ function CourseCard({ course }: { course: Course }) {
 
 export function Courses() {
   const [params] = useSearchParams();
+  const { courses, people, addCourse } = useData();
+  const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [track, setTrack] = useState('all');
   const [onlyMandatory, setOnlyMandatory] = useState(false);
@@ -86,13 +92,13 @@ export function Courses() {
 
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();
-    return COURSES.filter((c) => {
+    return courses.filter((c) => {
       if (q && !`${c.code} ${c.title} ${c.track}`.toLowerCase().includes(q)) return false;
       if (track !== 'all' && c.track !== track) return false;
       if (onlyMandatory && !c.mandatory) return false;
       return true;
     });
-  }, [debounced, track, onlyMandatory]);
+  }, [courses, debounced, track, onlyMandatory]);
 
   const hasFilters = !!debounced || track !== 'all' || onlyMandatory;
   const clearAll = () => {
@@ -101,9 +107,11 @@ export function Courses() {
     setOnlyMandatory(false);
   };
 
-  const expiring = COURSES.filter((c) => c.expiresInDays !== null && c.expiresInDays <= 30 && c.expiresInDays >= 0).length;
-  const expired = COURSES.filter((c) => c.expiresInDays !== null && c.expiresInDays < 0).length;
-  const avgRate = COURSES.reduce((s, c) => s + (c.completed / c.enrolled) * 100, 0) / COURSES.length;
+  const expiring = courses.filter((c) => c.expiresInDays !== null && c.expiresInDays <= 30 && c.expiresInDays >= 0).length;
+  const expired = courses.filter((c) => c.expiresInDays !== null && c.expiresInDays < 0).length;
+  // Guard the divide: a fresh course has nobody enrolled, and 0/0 renders as NaN%.
+  const rated = courses.filter((c) => c.enrolled > 0);
+  const avgRate = rated.length ? rated.reduce((s, c) => s + (c.completed / c.enrolled) * 100, 0) / rated.length : 0;
 
   return (
     <div className="space-y-4">
@@ -112,7 +120,7 @@ export function Courses() {
         description="Course catalogue with enrolment, completion rate and certification validity."
         aiPrompt="What certifications expire in the next 30 days?"
         actions={
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
             <Plus />
             New course
           </Button>
@@ -120,7 +128,7 @@ export function Courses() {
       />
 
       <motion.div variants={stagger(0.05)} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Courses" value={COURSES.length} icon={<BookOpen />} loading={loading} hint="in catalogue" />
+        <StatCard label="Courses" value={courses.length} icon={<BookOpen />} loading={loading} hint="in catalogue" />
         <StatCard label="Expiring soon" value={expiring} tone="warning" loading={loading} hint="within 30 days" />
         <StatCard label="Already expired" value={expired} tone="danger" loading={loading} hint="needs renewal" />
         <StatCard
@@ -129,7 +137,7 @@ export function Courses() {
           format={(n) => `${n.toFixed(0)}%`}
           delta={5.1}
           loading={loading}
-          hint={`across ${PEOPLE.length} people`}
+          hint={`across ${people.length} people`}
         />
       </motion.div>
 
@@ -183,7 +191,7 @@ export function Courses() {
       </div>
 
       <p aria-live="polite" className="sr-only">
-        {loading ? 'Loading courses' : `${filtered.length} of ${COURSES.length} courses shown`}
+        {loading ? 'Loading courses' : `${filtered.length} of ${courses.length} courses shown`}
       </p>
 
       {loading ? (
@@ -222,6 +230,8 @@ export function Courses() {
           ))}
         </motion.div>
       )}
+
+      <CourseFormDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={addCourse} />
     </div>
   );
 }

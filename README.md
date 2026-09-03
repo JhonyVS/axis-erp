@@ -27,3 +27,7 @@ npm run dev      # http://localhost:5180
   counts, reduced-motion support, and no meaning carried by colour alone.
 
 `CLAUDE.md` carries the rules this project is built to. Read it before changing anything.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
