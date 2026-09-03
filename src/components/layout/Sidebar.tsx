@@ -133,8 +133,16 @@ export function Sidebar() {
                             transition={reduced ? { duration: 0 } : spring}
                           />
                         )}
+                        {/* Hover grows it, the press pushes it back in. `group-active`
+                            is emitted after `group-hover`, so the press wins while it
+                            lasts — including on the item you are already on, because
+                            pressing that is still a press and must answer. */}
                         <Icon
-                          className={cn('relative size-4 shrink-0 transition-transform duration-normal', !active && 'group-hover:scale-110')}
+                          className={cn(
+                            'relative size-4 shrink-0 transition-transform duration-normal',
+                            !active && 'group-hover:scale-110',
+                            'group-active:scale-[0.88] group-active:duration-fast'
+                          )}
                           aria-hidden="true"
                         />
                         {!sidebarCollapsed && <span className="relative truncate">{item.label}</span>}
@@ -158,8 +166,16 @@ export function Sidebar() {
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="w-full justify-start gap-2.5 px-2"
           >
+            {/* The chevron already rotates 180 to state the direction it will go; the
+                press nudges it a few degrees further the same way, so the feedback and
+                the meaning are the same gesture rather than two competing ones. */}
             <ChevronsLeft
-              className={cn('transition-transform duration-normal ease-spring', sidebarCollapsed && 'rotate-180')}
+              className={cn(
+                'transition-transform duration-normal ease-spring',
+                sidebarCollapsed
+                  ? 'rotate-180 group-active:rotate-[195deg]'
+                  : 'group-active:-rotate-[15deg]'
+              )}
               aria-hidden="true"
             />
             {!sidebarCollapsed && <span>Collapse</span>}

@@ -54,8 +54,8 @@ token to the generator and let all twelve palettes derive it.
 
 ## Theme system
 
-Six themes × light/dark = twelve palettes, switched by **one click**, with no component
-changes and no re-render.
+Eleven themes × light/dark = twenty-two palettes, switched by **one click**, with no
+component changes and no re-render.
 
 ```
 scripts/build-themes.mjs        the ONLY place colour is decided
@@ -77,8 +77,10 @@ consumed as `oklch(var(--primary) / <alpha-value>)`, which is what keeps Tailwin
 modifiers (`bg-primary/10`) working. A hex behind a variable breaks them.
 
 **Nothing is picked by eye.** Every value is *solved* against a WCAG target, then
-verified. `npm run tokens` checks 492 colour pairs and exits non-zero if any fails.
-Adding a theme means adding four numbers to `THEMES`, not sixty hex codes.
+verified. `npm run tokens` checks 946 colour pairs and exits non-zero if any fails, and it
+runs in CI before the build — a guarantee that only holds on the machine of whoever
+remembers to run it is not a guarantee. Adding a theme means adding a few numbers to
+`THEMES`, not sixty hex codes.
 
 Three rules do the work, and they are the part to preserve:
 
@@ -94,6 +96,69 @@ Three rules do the work, and they are the part to preserve:
 3. **Fill polarity is derived, not fixed.** Both label polarities are measured and the more
    saturated fill wins. That is why amber goes bright with dark text while blue goes deep
    with white text — the thing a good design system does by hand, falling out of the rule.
+
+### Character is an axis, and it is the one that matters
+
+A theme is a **chroma register** plus a hue, in that order. `PUNCH` is the product's
+default loudness; a spec overrides it with `punch`, and the presets are the vocabulary:
+
+| preset  | what it is                                  | who it is for                      |
+| ------- | ------------------------------------------- | ---------------------------------- |
+| `MATTE` | accents at ~40% of the gamut shell          | a full shift in front of the screen |
+| `MUTED` | ~62%                                        | coloured, but not shouting          |
+| *none*  | the `PUNCH` table as written, ~97%          | maximum signal                      |
+
+This exists because of a finding worth keeping in mind whenever a palette is discussed:
+**hue is a weaker predictor of emotional response than chroma and lightness — a muted
+palette reads calm across many hues** (character-first harmony, after Ellen Divers). So
+"make it calmer" is not answered by choosing a duller hue, and a menu that varies only hue
+cannot offer the choice at all. It is answered by the chroma dial, at any hue you like.
+
+Two consequences that must be honoured:
+
+1. **Muted must never become a contrast concession.** Contrast is carried by lightness and
+   chroma only carries volume, which is exactly why a matte theme can clear the same 4.5:1
+   as a vivid one. The audit is what proves it, per theme, per mode — do not skip it after
+   touching a `punch`.
+2. **Declare the `character`.** The picker groups by it. A one-off `punch` that lands
+   between two registers makes those group headings a lie.
+
+**`paper` — a light mode that is not a lamp.** It lowers the light-mode surface ladder off
+the top of the axis (page 0.937, card 0.988). Two things come out of it: the page stops
+being the brightest object in the room for eight hours, which is what people are asking for
+when they say white screens hurt but they do not want dark mode; and `neutralHue` finally
+becomes VISIBLE in light mode. At L 0.979 the sRGB shell has so little room that every
+theme's page resolves to the same near-white whatever its hue — warm and cool pages were a
+distinction the tokens could not express, and only ever showed in dark mode. At 0.937 there
+is chroma to spend.
+
+It also found a latent assumption: foregrounds are solved against the worst-case surface,
+and the code took that to BE `surface-2`. On a paper theme the page drops below surface-2
+and becomes the worst case itself, which the audit caught immediately (`fg-muted / bg` at
+4.36:1 against a 4.5 target). The worst case is now computed rather than assumed, and every
+non-paper theme is byte-identical as a result.
+
+**The presence advisory.** `npm run tokens` ends with a note, not a failure: which solid
+fills do not clear 3:1 against the page they sit on. Every accent is verified against the
+LABEL it carries — that is what makes button text readable — but nothing verifies the
+button against the PAGE, which is what WCAG 1.4.11 asks for and what tells you a control
+is a control. The hole is invisible at high chroma and opens as chroma comes down, so it
+had to be measured before a matte register could be trusted. Two consequences:
+
+- Hues from ~190 to ~235 (cyan through sky) put their widest gamut shell so close to white
+  that a solid fill lands at 1.2-2.2:1 on a light page, at ANY punch. That is why there is
+  no teal theme: arithmetic, not taste. 258 and 28 clear 3:1 in both modes.
+- It is advisory because enforcing it would move Nordic's and Forest's accents, and those
+  ship. Fixing it properly means letting the solid differ between light and dark — a
+  palette-owner decision, not a silent one.
+
+**`monoChart` — the literal monochrome.** With it, chart series stop being a hue spread
+and become a tonal ramp of the primary, parameterised by CONTRAST rather than by lightness
+so the steps are measured rather than eyeballed. The trade-off is real and is why it is one
+theme and not the default: a tonal ramp is perfectly separable in greyscale and under every
+colour-vision deficiency, but it carries **no categorical signal** — six tones of one blue
+say "more and less of one thing". A chart on a `monoChart` theme must label its series or
+carry a legend.
 
 **Do not reuse the status hues for chart series.** They are spread evenly from the primary
 (`primaryHue + k*60`) for two reasons: even spacing makes a hue collision impossible at any
@@ -185,6 +250,31 @@ invalid input (clicking reveals every error and focuses the first invalid field 
 disabled button with no visible error is a dead end), a synchronous `useRef` guard against
 double-click on top of the `isSubmitting` state, and failure as a red `Alert` **inside**
 the dialog, which stays open.
+
+**Icon motion.** `ui/animated-icon.tsx`. Icons animate off the **button's press**, never
+off hover: a warehouse tablet has no hover, and on a desktop hover fires while the person
+is still deciding, so a hover-driven icon reacts to a cursor merely passing over it. That
+is also why every published animated-icon collection needs adapting rather than dropping
+in — they are all hover-first.
+
+It is CSS on `group-active`, not framer-motion, for a reason worth keeping: `buttonVariants`
+sets `[&_svg]:pointer-events-none`, so the glyph never receives a pointer event and a JS tap
+gesture on it could not fire anyway — and should not, because pressing the far corner of a
+button is the same press as pressing its icon. The CSS route also inherits the global
+`prefers-reduced-motion` rule, which collapses the transition and leaves the final state.
+
+Press feedback is **automatic**: `buttonVariants` scales any descendant svg on `:active`,
+so every icon in every button already answers a press and no site has to opt in. Write the
+selector whole — `[&:active_svg]` — never composed as `active:[&_svg]`: Tailwind appends
+the pseudo-class to the innermost part of that second form and emits `.cls svg:active`,
+the icon's OWN active state, which can never fire because the same base sets
+`[&_svg]:pointer-events-none`. It compiles, it ships, and it does nothing.
+
+A hand-written icon is only worth it when the movement carries the verb — a trash lid that lifts says "this will be put
+away"; the same glyph scaled down says nothing. Ration it: an animation that fires
+everywhere stops being information. Draw-on strokes use `pathLength={1}` so the dash offset
+is 1 → 0 whatever the real geometry, and the DRAWN state is the default whenever the
+component is told it is checked, so reduced motion never leaves an empty box.
 
 **Empty states.** "Nothing here yet" and "nothing matches your filters" are different
 problems with different fixes, so they are different components with different copy and

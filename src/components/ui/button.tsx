@@ -13,12 +13,26 @@ import { playSound, type SoundName } from '@/lib/sound';
  */
 const buttonVariants = cva(
   cn(
-    'relative inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md',
+    // `group` so an icon inside can animate off the BUTTON's press. The glyph never
+    // receives pointer events of its own (see the svg rule below), and it should not:
+    // pressing the far corner of a button is the same press as pressing its icon.
+    'group relative inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md',
     'font-medium transition-colors duration-fast ease-out',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
     // Disabled must be obvious AND non-interactive: opacity alone still looks clickable.
     'disabled:pointer-events-none disabled:opacity-50',
-    '[&_svg]:pointer-events-none [&_svg]:shrink-0'
+    '[&_svg]:pointer-events-none [&_svg]:shrink-0',
+    // Every icon in every button answers the press, with no per-site work: the glyph
+    // pushes in while the button is held and springs back on release. `active:` and not
+    // a hover variant, because hover fires while the person is still deciding and a
+    // touch screen has no hover at all — and the button's own 0.97 is too small to read
+    // on a 16px glyph, which is why the icon takes a deeper 0.88.
+    // NB the selector is written whole, as `[&:active_svg]`, not composed as
+    // `active:[&_svg]`. Tailwind composes that second form by appending the pseudo-class
+    // to the INNERMOST part, emitting `.cls svg:active` — the icon's own active state,
+    // which never fires because the svg has pointer-events-none two lines above. It
+    // compiles, it ships, and it does nothing.
+    '[&:active_svg]:scale-[0.88] [&_svg]:transition-transform [&_svg]:duration-fast [&_svg]:ease-out'
   ),
   {
     variants: {

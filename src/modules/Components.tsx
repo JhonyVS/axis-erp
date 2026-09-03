@@ -35,6 +35,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Tooltip } from '@/components/ui/tooltip';
+import { TrashPress, RefreshPress, CheckPress } from '@/components/ui/animated-icon';
 import { Avatar, Kbd, Progress, Separator, Skeleton } from '@/components/ui/misc';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -173,6 +174,68 @@ function ButtonsSpec() {
           <Button variant="danger" disabled>
             Disabled danger
           </Button>
+        </Row>
+      </div>
+    </Spec>
+  );
+}
+
+function IconMotionSpec() {
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <Spec
+      id="icon-motion"
+      title="Icon motion"
+      note="Every button already presses its own icons — nothing below is wrapped. Driven by the press and never by hover: a warehouse tablet has no hover, and on a desktop hover fires while the person is still deciding. All of it is CSS on group-active, so prefers-reduced-motion is already handled by the global rule — a reduced-motion user gets the final state instantly."
+    >
+      <div className="divide-y divide-line">
+        <Row label="Every icon">
+          {/* Nothing is wrapped here. `buttonVariants` scales any descendant svg on
+              :active, so this is what every button in the product already does. */}
+          <Button variant="secondary">
+            <Send />
+            Send
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="Add item">
+            <Plus />
+          </Button>
+          <span className="text-2xs text-fg-muted">
+            automatic — the glyph goes to 0.88 while the button is held
+          </span>
+        </Row>
+
+        <Row label="Bespoke">
+          {/* Hand-written, because the movement has to belong to the verb. */}
+          <Button variant="danger">
+            <TrashPress className="size-4" />
+            Delete
+          </Button>
+          <Button variant="secondary">
+            <RefreshPress className="size-4" />
+            Refresh
+          </Button>
+          <span className="text-2xs text-fg-muted">the lid lifts; the arrows turn 60°</span>
+        </Row>
+
+        <Row label="Draw-on">
+          <Button variant="outline">
+            <CheckPress className="size-4" />
+            Hold to draw
+          </Button>
+          <Button
+            variant={saved ? 'soft' : 'primary'}
+            onClick={() => {
+              setSaved((v) => !v);
+              toast.success(saved ? 'Marked as pending' : 'Marked as done');
+            }}
+          >
+            <CheckPress checked={saved} className="size-4" />
+            {saved ? 'Done' : 'Mark as done'}
+          </Button>
+          <span className="text-2xs text-fg-muted">
+            pathLength=1, so the dash offset is 1 → 0 whatever the geometry
+          </span>
         </Row>
       </div>
     </Spec>
@@ -960,6 +1023,7 @@ function PaletteSpec() {
 
 const SECTIONS = [
   ['buttons', 'Buttons'],
+  ['icon-motion', 'Icon motion'],
   ['badges', 'Badges'],
   ['forms', 'Forms'],
   ['overlays', 'Overlays'],
@@ -1001,6 +1065,7 @@ export function Components() {
 
       <motion.div variants={stagger(0.05)} initial="hidden" animate="show" className="space-y-4">
         <ButtonsSpec />
+        <IconMotionSpec />
         <BadgesSpec />
         <FormsSpec />
         <OverlaysSpec />
