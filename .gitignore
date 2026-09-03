@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+
+# Build config is versioned deliberately: a clone without tailwind.config.js
+# builds an unstyled app, and that failure is silent.

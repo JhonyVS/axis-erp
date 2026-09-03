@@ -1,0 +1,139 @@
+/* Generated colour tokens for all six themes, light + dark. See scripts/build-themes.mjs. */
+@import './themes.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Motion tokens. One rhythm for the whole product — a component that invents its
+       own 400ms feels like it belongs to a different app. */
+    --dur-fast: 120ms;
+    --dur-normal: 190ms;
+    --dur-slow: 280ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+    /* Shadows borrow the theme's own neutral, so they tint with it. */
+    --shadow: var(--fg);
+
+    /* Density. The switch in the topbar flips one attribute and the whole grid
+       re-rhythms; no component knows which mode it is in. */
+    --row-h: 2.75rem;
+    --row-pad: 0.625rem;
+  }
+
+  :root[data-density='compact'] {
+    --row-h: 2.125rem;
+    --row-pad: 0.375rem;
+    --radius: 0.375rem;
+  }
+
+  * {
+    border-color: oklch(var(--border));
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans text-base antialiased;
+    /* A 250-char unbroken string pasted into a description must not push the layout
+       sideways. `anywhere` (not `break-word`) also shrinks min-content, which is what
+       actually stops a flex child from shoving its siblings off screen. */
+    overflow-wrap: anywhere;
+  }
+
+  /* Numbers in tables must not change width as they change value. */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One focus treatment, applied by the browser's own heuristic. Never removed —
+     an invisible focus ring makes the app unusable by keyboard. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-bg;
+  }
+
+  ::selection {
+    background-color: oklch(var(--primary) / 0.22);
+  }
+
+  /* Scrollbars are theme tokens, otherwise dark mode shows white native gutters. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--border-strong)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(var(--border-strong));
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(var(--fg-subtle));
+  }
+
+  /* Respect the OS setting. Motion here is decoration on top of a layout that already
+     works; when it is switched off nothing becomes unreachable. Framer Motion reads the
+     same signal via useReducedMotion() for the JS-driven transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Keyboard-only escape hatch to the main region. First thing in the tab order. */
+  .skip-link {
+    @apply sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-[100]
+      focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2
+      focus-visible:text-sm focus-visible:font-medium focus-visible:text-primary-on focus-visible:shadow-high;
+  }
+
+  /* Loading placeholder with a travelling highlight rather than a pulsing block —
+     it reads as "work in progress" instead of "broken element". */
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-surface-2;
+  }
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    content: '';
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      oklch(var(--fg) / 0.06),
+      transparent
+    );
+  }
+
+  /* The theme transition. Only paint properties are transitioned, and only while the
+     switcher marks the root — otherwise every hover on every row would inherit a 280ms
+     colour fade and the table would feel laggy. */
+  :root[data-theme-switching] * {
+    transition:
+      background-color var(--dur-slow) var(--ease-out),
+      border-color var(--dur-slow) var(--ease-out),
+      color var(--dur-slow) var(--ease-out),
+      fill var(--dur-slow) var(--ease-out) !important;
+  }
+}
