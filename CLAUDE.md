@@ -161,6 +161,18 @@ user just rescued. Hovering the stack pauses every timer.
 something that just happened and then leaves. If it is still true after a reload, it is a
 banner.
 
+**Every collection gets the same five verbs**: `add`, `update`, `remove`, `restore`,
+`commit`. Deletes are soft everywhere — `remove` parks the record with its ORIGINAL index
+and `restore` splices it back there, because appending it to the end "restores" the row
+somewhere the user never had it, which reads as a second mistake. The park/restore/commit
+logic is written once as pure functions in `dataStore.ts`; do not hand-roll a fourth copy.
+
+**Module parity.** Inventory, Directory and Courses all offer the same affordances, and a
+new module is expected to match: a create dialog, an edit dialog behind a per-row/card
+action menu, a detail drawer on click, destructive delete behind `ConfirmDialog`, an undo
+toast, and a brief flash on the record just created or edited. A module that only lists is
+half a module.
+
 **Data lives in `stores/dataStore.ts`, not in `mock/data.ts`.** The mock module SEEDS the
 store once; every read and write afterwards goes through the store. Importing the frozen
 module constant into a module is what made "New item" a decoration — a form can validate
@@ -227,6 +239,26 @@ src/
 ```
 
 **Keyboard:** `⌘K` command palette · `⌘J` assistant · `/` search · `Esc` close.
+
+## Sign-in
+
+`/login`, guarded by `RequireAuth` in `App.tsx`. The guard stashes the attempted path in
+route state so the redirect after sign-in lands the user where they were going — a deep
+link that survives the login is the difference between a shareable URL and a decorative one.
+
+**Nothing is verified.** `authStore.signIn` accepts anything, and the screen says so out
+loud. Keep that notice: a prototype login that *looks* like it checks credentials teaches
+people to type real passwords into a demo. Never add password storage, never remove the
+`autoComplete` attributes (blocking a password manager is the fastest way to make a login
+hostile — WCAG 3.3.8).
+
+The 1.9s delay is deliberate, and so is what fills it: the card lists the steps it is going
+through and ticks each one off. Authentication is the one place a pause is expected, and an
+indeterminate spinner there reads as a hang where a visible sequence reads as progress.
+
+`components/auth/WaveField.tsx` paints the background on a canvas, reading the live theme
+tokens — so the sign-in screen proves the theme system before any data is on screen. It
+pauses when the tab is hidden and paints a single composed frame under reduced motion.
 
 ## The component gallery is the regression surface
 

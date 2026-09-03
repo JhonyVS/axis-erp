@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, UserPlus, UserX, X } from 'lucide-react';
+import { Ellipsis, Mail, Pencil, Search, Trash2, UserPlus, UserX, X } from 'lucide-react';
 import { dateOnly, relative } from '@/lib/utils';
 import { useDebounced, useMockQuery } from '@/lib/hooks';
 import { DEPARTMENT_LIST, type Person } from '@/mock/data';
@@ -11,7 +11,17 @@ import { DataTable, type Column } from '@/components/data/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, Progress } from '@/components/ui/misc';
+import { Avatar, Progress, Separator } from '@/components/ui/misc';
+import { Sheet } from '@/components/ui/sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/toast';
+import {
+  DropdownMenu,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+  DropdownSeparator,
+} from '@/components/ui/dropdown';
 import { Tooltip } from '@/components/ui/tooltip';
 import { motion } from 'framer-motion';
 import { stagger } from '@/lib/motion';
@@ -24,8 +34,12 @@ const STATUS_TONE = {
 
 export function Directory() {
   const [params] = useSearchParams();
-  const { people, addPerson } = useData();
+  const { people, addPerson, updatePerson, removePerson, restorePerson, commitPerson } = useData();
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Person | undefined>();
+  const [detail, setDetail] = useState<Person | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Person | null>(null);
+  const [highlight, setHighlight] = useState<number | null>(null);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [department, setDepartment] = useState('all');
   const debounced = useDebounced(search, 300);
@@ -41,6 +55,49 @@ export function Directory() {
   }, [people, debounced, department]);
 
   const hasFilters = !!debounced || department !== 'all';
+
+  // Clearing the id after the flash finishes means the same row can be highlighted again
+  // later — a highlight that never resets only ever fires once.
+  const flash = (id: number) => {
+    setHighlight(id);
+    window.setTimeout(() => setHighlight((cur) => (cur === id ? null : cur)), 2400);
+  };
+
+  const openCreate = () => {
+    setEditing(undefined);
+    setFormOpen(true);
+  };
+
+  const openEdit = (person: Person) => {
+    setEditing(person);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = (draft: Omit<Person, 'id' | 'startedAt'>) => {
+    if (editing) {
+      updatePerson(editing.id, draft);
+      flash(editing.id);
+    } else {
+      flash(addPerson(draft).id);
+    }
+  };
+
+  const confirmDelete = () => {
+    const person = pendingDelete;
+    if (!person) return;
+    removePerson(person.id);
+    setPendingDelete(null);
+    setDetail(null);
+    // The toast owns the commit: the record is only really gone when the timer expires.
+    toast.undo('Person removed', {
+      description: `${person.name} · ${person.department}`,
+      onUndo: () => {
+        restorePerson(person.id);
+        toast.success('Person restored', person.name);
+      },
+      onCommit: () => commitPerson(person.id),
+    });
+  };
 
   const columns: Column<Person>[] = [
     {
@@ -103,6 +160,37 @@ export function Directory() {
         </Tooltip>
       ),
     },
+    {
+      id: 'actions',
+      header: '',
+      width: 'w-10',
+      align: 'center',
+      cell: (p) => (
+        // Stops the row's own click handler from also firing and opening the drawer
+        // behind the menu.
+        <div onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${p.name}`}>
+                <Ellipsis />
+              </Button>
+            </DropdownTrigger>
+            <DropdownContent>
+              <DropdownItem icon={<Pencil />} onSelect={() => openEdit(p)}>
+                Edit
+              </DropdownItem>
+              <DropdownItem icon={<Mail />} onSelect={() => toast.info('Email drafted', p.email)}>
+                Send email
+              </DropdownItem>
+              <DropdownSeparator />
+              <DropdownItem destructive icon={<Trash2 />} onSelect={() => setPendingDelete(p)}>
+                Remove
+              </DropdownItem>
+            </DropdownContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
   ];
 
   const onLeave = people.filter((p) => p.status === 'On leave').length;
@@ -115,7 +203,7 @@ export function Directory() {
         description="Everyone on site, with their department, status and training compliance."
         aiPrompt="Who is on leave right now?"
         actions={
-          <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
+          <Button variant="primary" size="sm" onClick={openCreate}>
             <UserPlus />
             Add person
           </Button>
@@ -204,6 +292,8 @@ export function Directory() {
           getRowId={(p) => p.id}
           loading={loading}
           initialSort={{ column: 'name', dir: 'asc' }}
+          onRowClick={setDetail}
+          highlightId={highlight}
           empty={
             <EmptyState
               icon={<UserX />}
@@ -226,7 +316,7 @@ export function Directory() {
                     Clear all filters
                   </Button>
                 ) : (
-                  <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
+                  <Button variant="primary" size="sm" onClick={openCreate}>
                     <UserPlus />
                     Add person
                   </Button>
@@ -237,7 +327,104 @@ export function Directory() {
         />
       </Section>
 
-      <PersonFormDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={addPerson} />
+      <PersonFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        initial={editing}
+        onSubmit={handleSubmit}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Remove this person?"
+        description={pendingDelete ? `${pendingDelete.name} · ${pendingDelete.role}` : ''}
+        detail="They are removed from the directory, but you have six seconds to undo before it is committed."
+        confirmLabel="Remove"
+        onConfirm={confirmDelete}
+      />
+
+      <Sheet
+        open={!!detail}
+        onOpenChange={(o) => !o && setDetail(null)}
+        title={detail?.name ?? ''}
+        description={detail ? `${detail.role} · ${detail.department}` : ''}
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setDetail(null)} sound="close">
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (detail) openEdit(detail);
+                setDetail(null);
+              }}
+            >
+              <Pencil />
+              Edit person
+            </Button>
+          </>
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Avatar name={detail.name} className="size-12" />
+              <div className="min-w-0">
+                <p className="truncate text-md font-semibold">{detail.name}</p>
+                <p className="truncate text-sm text-fg-muted">{detail.email}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone={STATUS_TONE[detail.status]} dot>
+                {detail.status}
+              </Badge>
+              <Badge tone="neutral">{detail.department}</Badge>
+              <Badge tone="neutral">{detail.site}</Badge>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
+                Mandatory training
+              </p>
+              <Progress
+                value={detail.compliance}
+                label={`${detail.name}: ${detail.compliance}% of mandatory training complete`}
+                tone={detail.compliance >= 90 ? 'success' : detail.compliance >= 70 ? 'warning' : 'danger'}
+              />
+            </div>
+
+            <Separator />
+
+            <dl className="divide-y divide-line text-sm">
+              {[
+                ['Role', detail.role],
+                ['Department', detail.department],
+                ['Site', detail.site],
+                ['Started', dateOnly(detail.startedAt)],
+              ].map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-3 py-2">
+                  <dt className="text-fg-muted">{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-danger-fg hover:bg-danger-soft hover:text-danger-soft-fg"
+              onClick={() => setPendingDelete(detail)}
+            >
+              <Trash2 />
+              Remove from directory
+            </Button>
+          </div>
+        )}
+      </Sheet>
     </div>
   );
 }

@@ -34,10 +34,13 @@ function computeErrors(d: Draft) {
 export function CourseFormDialog({
   open,
   onOpenChange,
+  initial,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Present = edit mode. */
+  initial?: Course;
   onSubmit: (draft: Draft) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(blank);
@@ -48,13 +51,27 @@ export function CourseFormDialog({
   const submittingRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const editing = !!initial;
+
   useEffect(() => {
     if (!open) return;
-    setDraft(blank());
+    setDraft(
+      initial
+        ? {
+            code: initial.code,
+            title: initial.title,
+            track: initial.track,
+            durationMin: initial.durationMin,
+            mandatory: initial.mandatory,
+            enrolled: initial.enrolled,
+            expiresInDays: initial.expiresInDays,
+          }
+        : blank()
+    );
     setTouched(new Set());
     setAttempted(false);
-    setValidity(180);
-  }, [open]);
+    setValidity(initial?.expiresInDays ?? 180);
+  }, [open, initial]);
 
   const errors = computeErrors(draft);
   const visible = (f: keyof Draft) => (attempted || touched.has(f) ? errors[f] : undefined);
@@ -80,7 +97,7 @@ export function CourseFormDialog({
       // put a red badge on something nobody was ever required to hold.
       onSubmit({ ...draft, expiresInDays: draft.mandatory ? validity : null });
       onOpenChange(false);
-      toast.success('Course created', `${draft.code} · ${draft.title}`);
+      toast.success(editing ? 'Course updated' : 'Course created', `${draft.code} · ${draft.title}`);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -92,8 +109,12 @@ export function CourseFormDialog({
       <DialogContent open={open}>
         <form ref={formRef} onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader
-            title="New course"
-            description="It appears in the catalogue immediately, with nobody enrolled yet."
+            title={editing ? 'Edit course' : 'New course'}
+            description={
+              editing
+                ? 'Changes apply to everyone already enrolled.'
+                : 'It appears in the catalogue immediately, with nobody enrolled yet.'
+            }
             icon={
               <span className="grid size-8 place-items-center rounded-lg bg-primary-soft text-primary-soft-fg">
                 <GraduationCap className="size-4" aria-hidden="true" />
@@ -192,8 +213,15 @@ export function CourseFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submitting} loadingText="Creating…" sound={null}>
-              Create course
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={submitting}
+              loadingText={editing ? 'Saving…' : 'Creating…'}
+              sound={null}
+            >
+              {editing ? 'Save changes' : 'Create course'}
             </Button>
           </DialogFooter>
         </form>

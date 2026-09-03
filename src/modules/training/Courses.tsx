@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, BookOpen, Clock, Plus, Search, Users, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, Clock, Ellipsis, Pencil, Plus, Search, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDebounced, useMockQuery } from '@/lib/hooks';
 import { TRACK_LIST, type Course } from '@/mock/data';
@@ -12,7 +12,17 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress, Skeleton } from '@/components/ui/misc';
+import { Progress, Separator, Skeleton } from '@/components/ui/misc';
+import { Sheet } from '@/components/ui/sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/toast';
+import {
+  DropdownMenu,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+  DropdownSeparator,
+} from '@/components/ui/dropdown';
 import { Tooltip } from '@/components/ui/tooltip';
 import { stagger, fadeUp, spring } from '@/lib/motion';
 
@@ -24,7 +34,19 @@ function expiryState(days: number | null) {
   return { tone: 'success' as const, label: `Valid ${days}d` };
 }
 
-function CourseCard({ course }: { course: Course }) {
+function CourseCard({
+  course,
+  highlighted,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  course: Course;
+  highlighted: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   // A course created a moment ago has nobody enrolled. 0/0 is NaN, and `NaN%` on a
   // progress bar is the kind of thing that only shows up after someone uses the feature.
   const rate = course.enrolled > 0 ? (course.completed / course.enrolled) * 100 : 0;
@@ -33,20 +55,54 @@ function CourseCard({ course }: { course: Course }) {
   return (
     <motion.div variants={fadeUp} layout>
       <motion.div whileHover={{ y: -2 }} transition={spring} className="h-full">
-        <Card className="flex h-full flex-col p-3.5 transition-shadow duration-normal hover:shadow-mid">
+        <Card
+          onClick={onOpen}
+          className={cn(
+            'flex h-full cursor-pointer flex-col p-3.5 transition-shadow duration-normal hover:shadow-mid',
+            // The flash fades on its own. A permanent marker would still be there
+            // tomorrow, meaning nothing.
+            highlighted && 'animate-row-flash ring-1 ring-primary-line'
+          )}
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-mono text-2xs text-fg-subtle">{course.code}</p>
               {/* Wraps rather than truncates: a half-shown course title is unusable. */}
               <h3 className="mt-0.5 text-sm font-semibold leading-snug text-fg">{course.title}</h3>
             </div>
-            {course.mandatory && (
-              <Tooltip content="Required for this role">
-                <Badge tone="primary" className="shrink-0">
-                  Mandatory
-                </Badge>
-              </Tooltip>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+              {course.mandatory && (
+                <Tooltip content="Required for this role">
+                  <Badge tone="primary">Mandatory</Badge>
+                </Tooltip>
+              )}
+              {/* Stops the card's own click from also firing and opening the drawer
+                  behind the menu. */}
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${course.title}`}>
+                      <Ellipsis />
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownContent>
+                    <DropdownItem icon={<Pencil />} onSelect={onEdit}>
+                      Edit
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={<UserPlus />}
+                      onSelect={() => toast.info('Enrolment opened', course.title)}
+                    >
+                      Enrol people
+                    </DropdownItem>
+                    <DropdownSeparator />
+                    <DropdownItem destructive icon={<Trash2 />} onSelect={onDelete}>
+                      Delete
+                    </DropdownItem>
+                  </DropdownContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -82,8 +138,12 @@ function CourseCard({ course }: { course: Course }) {
 
 export function Courses() {
   const [params] = useSearchParams();
-  const { courses, people, addCourse } = useData();
+  const { courses, people, addCourse, updateCourse, removeCourse, restoreCourse, commitCourse } = useData();
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Course | undefined>();
+  const [detail, setDetail] = useState<Course | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Course | null>(null);
+  const [highlight, setHighlight] = useState<number | null>(null);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [track, setTrack] = useState('all');
   const [onlyMandatory, setOnlyMandatory] = useState(false);
@@ -107,6 +167,49 @@ export function Courses() {
     setOnlyMandatory(false);
   };
 
+  // Clearing the id after the flash finishes means the same card can be highlighted again
+  // later — a highlight that never resets only ever fires once.
+  const flash = (id: number) => {
+    setHighlight(id);
+    window.setTimeout(() => setHighlight((cur) => (cur === id ? null : cur)), 2400);
+  };
+
+  const openCreate = () => {
+    setEditing(undefined);
+    setFormOpen(true);
+  };
+
+  const openEdit = (course: Course) => {
+    setEditing(course);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = (draft: Omit<Course, 'id' | 'completed'>) => {
+    if (editing) {
+      updateCourse(editing.id, draft);
+      flash(editing.id);
+    } else {
+      flash(addCourse(draft).id);
+    }
+  };
+
+  const confirmDelete = () => {
+    const course = pendingDelete;
+    if (!course) return;
+    removeCourse(course.id);
+    setPendingDelete(null);
+    setDetail(null);
+    // The toast owns the commit: the record is only really gone when the timer expires.
+    toast.undo('Course deleted', {
+      description: `${course.code} · ${course.title}`,
+      onUndo: () => {
+        restoreCourse(course.id);
+        toast.success('Course restored', course.title);
+      },
+      onCommit: () => commitCourse(course.id),
+    });
+  };
+
   const expiring = courses.filter((c) => c.expiresInDays !== null && c.expiresInDays <= 30 && c.expiresInDays >= 0).length;
   const expired = courses.filter((c) => c.expiresInDays !== null && c.expiresInDays < 0).length;
   // Guard the divide: a fresh course has nobody enrolled, and 0/0 renders as NaN%.
@@ -120,7 +223,7 @@ export function Courses() {
         description="Course catalogue with enrolment, completion rate and certification validity."
         aiPrompt="What certifications expire in the next 30 days?"
         actions={
-          <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
+          <Button variant="primary" size="sm" onClick={openCreate}>
             <Plus />
             New course
           </Button>
@@ -212,9 +315,16 @@ export function Courses() {
             title="No courses match these filters"
             description="Try a different track, or clear the search to see the full catalogue."
             action={
-              <Button variant="secondary" size="sm" onClick={clearAll}>
-                Clear all filters
-              </Button>
+              hasFilters ? (
+                <Button variant="secondary" size="sm" onClick={clearAll}>
+                  Clear all filters
+                </Button>
+              ) : (
+                <Button variant="primary" size="sm" onClick={openCreate}>
+                  <Plus />
+                  New course
+                </Button>
+              )
             }
           />
         </Card>
@@ -226,12 +336,120 @@ export function Courses() {
           className={cn('grid gap-3 sm:grid-cols-2 xl:grid-cols-3')}
         >
           {filtered.map((c) => (
-            <CourseCard key={c.id} course={c} />
+            <CourseCard
+              key={c.id}
+              course={c}
+              highlighted={highlight === c.id}
+              onOpen={() => setDetail(c)}
+              onEdit={() => openEdit(c)}
+              onDelete={() => setPendingDelete(c)}
+            />
           ))}
         </motion.div>
       )}
 
-      <CourseFormDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={addCourse} />
+      <CourseFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        initial={editing}
+        onSubmit={handleSubmit}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Delete this course?"
+        description={pendingDelete ? `${pendingDelete.code} · ${pendingDelete.title}` : ''}
+        detail="It is removed from the catalogue, but you have six seconds to undo before it is committed."
+        onConfirm={confirmDelete}
+      />
+
+      <Sheet
+        open={!!detail}
+        onOpenChange={(o) => !o && setDetail(null)}
+        title={detail?.title ?? ''}
+        description={detail ? `${detail.code} · ${detail.track}` : ''}
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setDetail(null)} sound="close">
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (detail) openEdit(detail);
+                setDetail(null);
+              }}
+            >
+              <Pencil />
+              Edit course
+            </Button>
+          </>
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone="neutral">{detail.track}</Badge>
+              {detail.mandatory && <Badge tone="primary">Mandatory</Badge>}
+              <Badge tone={expiryState(detail.expiresInDays).tone} dot>
+                {expiryState(detail.expiresInDays).label}
+              </Badge>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-2xs font-semibold uppercase tracking-wider text-fg-subtle">
+                Completion
+              </p>
+              <Progress
+                value={detail.enrolled > 0 ? (detail.completed / detail.enrolled) * 100 : 0}
+                label={`${detail.title}: ${detail.completed} of ${detail.enrolled} completed`}
+                tone={
+                  detail.enrolled === 0
+                    ? 'primary'
+                    : detail.completed / detail.enrolled >= 0.8
+                      ? 'success'
+                      : detail.completed / detail.enrolled >= 0.5
+                        ? 'warning'
+                        : 'danger'
+                }
+              />
+            </div>
+
+            <Separator />
+
+            <dl className="divide-y divide-line text-sm">
+              {[
+                ['Code', detail.code],
+                ['Track', detail.track],
+                ['Duration', `${Math.floor(detail.durationMin / 60)}h ${String(detail.durationMin % 60).padStart(2, '0')}m`],
+                ['Enrolled', String(detail.enrolled)],
+                ['Completed', String(detail.completed)],
+                [
+                  'Certification',
+                  detail.expiresInDays === null ? 'Does not expire' : `${detail.expiresInDays} days`,
+                ],
+              ].map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-3 py-2">
+                  <dt className="text-fg-muted">{k}</dt>
+                  <dd className="font-mono tabular">{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-danger-fg hover:bg-danger-soft hover:text-danger-soft-fg"
+              onClick={() => setPendingDelete(detail)}
+            >
+              <Trash2 />
+              Delete this course
+            </Button>
+          </div>
+        )}
+      </Sheet>
     </div>
   );
 }

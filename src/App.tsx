@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -11,6 +11,7 @@ import { useUi } from '@/stores/uiStore';
 import { useHotkey } from '@/lib/hooks';
 import { primeAudio } from '@/lib/sound';
 import { watchSystemTheme } from '@/stores/prefsStore';
+import { useAuth } from '@/stores/authStore';
 import { pageTransition } from '@/lib/motion';
 
 import { Dashboard } from '@/modules/Dashboard';
@@ -18,6 +19,7 @@ import { Inventory } from '@/modules/warehouse/Inventory';
 import { Directory } from '@/modules/hr/Directory';
 import { Courses } from '@/modules/training/Courses';
 import { Components } from '@/modules/Components';
+import { Login } from '@/modules/Login';
 import { Placeholder } from '@/modules/Placeholder';
 
 function Shell() {
@@ -179,15 +181,46 @@ function Shell() {
 
       <AiDock />
       <CommandPalette />
-      <Toaster />
     </div>
   );
+}
+
+/**
+ * Route guard.
+ *
+ * Remembers where the user was heading so the redirect after sign-in lands them there
+ * rather than dumping everyone on the dashboard — a deep link that survives the login is
+ * the difference between a shareable URL and a decorative one.
+ *
+ * `replace` on the way out keeps the guarded URL out of history, so Back from the login
+ * screen does not bounce straight back into the guard.
+ */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const user = useAuth((s) => s.user);
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+  return <>{children}</>;
 }
 
 export default function App() {
   return (
     <TooltipProvider delayDuration={250} skipDelayDuration={300}>
-      <Shell />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <Shell />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+      {/* Above the guard: the sign-in screen needs to be able to raise a toast too. */}
+      <Toaster />
     </TooltipProvider>
   );
 }

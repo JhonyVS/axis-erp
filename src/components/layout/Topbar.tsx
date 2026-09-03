@@ -1,7 +1,8 @@
 import { Bell, Search, Sparkles } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUi } from '@/stores/uiStore';
+import { useAuth } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Kbd, Avatar, Separator } from '@/components/ui/misc';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +33,9 @@ const CRUMBS: Record<string, string[]> = {
 
 export function Topbar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { setCommandOpen, setAiOpen, aiOpen } = useUi();
+  const { user, signOut } = useAuth();
   const crumbs = CRUMBS[pathname] ?? ['Axis'];
 
   return (
@@ -129,15 +132,15 @@ export function Topbar() {
           <button
             type="button"
             className="rounded-full transition-transform duration-fast hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-            aria-label="Account menu for Jon Alvarez"
+            aria-label={`Account menu for ${user?.name ?? 'you'}`}
           >
-            <Avatar name="Jon Alvarez" />
+            <Avatar name={user?.name ?? 'Axis User'} />
           </button>
         </DropdownTrigger>
         <DropdownContent>
           <div className="px-2 py-1.5">
-            <p className="truncate text-sm font-medium">Jon Alvarez</p>
-            <p className="truncate text-2xs text-fg-muted">Warehouse Manager</p>
+            <p className="truncate text-sm font-medium">{user?.name ?? 'Axis User'}</p>
+            <p className="truncate text-2xs text-fg-muted">{user?.email ?? 'Warehouse Manager'}</p>
           </div>
           <DropdownSeparator />
           <DropdownItem>Profile</DropdownItem>
@@ -145,7 +148,15 @@ export function Topbar() {
           <DropdownSeparator />
           {/* Sign out is destructive-adjacent, so it sits below a separator rather than
               in the same block as the harmless items. */}
-          <DropdownItem destructive>Sign out</DropdownItem>
+          <DropdownItem
+            destructive
+            onSelect={() => {
+              signOut();
+              navigate('/login', { replace: true });
+            }}
+          >
+            Sign out
+          </DropdownItem>
         </DropdownContent>
       </DropdownMenu>
     </header>

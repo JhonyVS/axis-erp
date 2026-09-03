@@ -35,10 +35,13 @@ function computeErrors(d: Draft) {
 export function PersonFormDialog({
   open,
   onOpenChange,
+  initial,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Present = edit mode. */
+  initial?: Person;
   onSubmit: (draft: Draft) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(blank);
@@ -48,12 +51,28 @@ export function PersonFormDialog({
   const submittingRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const editing = !!initial;
+
   useEffect(() => {
     if (!open) return;
-    setDraft(blank());
-    setTouched(new Set());
+    setDraft(
+      initial
+        ? {
+            name: initial.name,
+            role: initial.role,
+            department: initial.department,
+            site: initial.site,
+            email: initial.email,
+            status: initial.status,
+            compliance: initial.compliance,
+          }
+        : blank()
+    );
+    // In edit mode the email is already the user's own, so the name-derived suggestion
+    // must not fire and overwrite it.
+    setTouched(initial ? new Set(['email']) : new Set());
     setAttempted(false);
-  }, [open]);
+  }, [open, initial]);
 
   const errors = computeErrors(draft);
   const visible = (f: keyof Draft) => (attempted || touched.has(f) ? errors[f] : undefined);
@@ -85,7 +104,7 @@ export function PersonFormDialog({
     try {
       onSubmit(draft);
       onOpenChange(false);
-      toast.success('Person added', `${draft.name} · ${draft.department}`);
+      toast.success(editing ? 'Person updated' : 'Person added', `${draft.name} · ${draft.department}`);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -97,8 +116,12 @@ export function PersonFormDialog({
       <DialogContent open={open}>
         <form ref={formRef} onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader
-            title="Add person"
-            description="They will appear in the directory and start at 0% training compliance."
+            title={editing ? 'Edit person' : 'Add person'}
+            description={
+              editing
+                ? 'Changes apply across the directory and the compliance report.'
+                : 'They will appear in the directory and start at 0% training compliance.'
+            }
             icon={
               <span className="grid size-8 place-items-center rounded-lg bg-primary-soft text-primary-soft-fg">
                 <UserPlus className="size-4" aria-hidden="true" />
@@ -188,8 +211,15 @@ export function PersonFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submitting} loadingText="Adding…" sound={null}>
-              Add person
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={submitting}
+              loadingText={editing ? 'Saving…' : 'Adding…'}
+              sound={null}
+            >
+              {editing ? 'Save changes' : 'Add person'}
             </Button>
           </DialogFooter>
         </form>

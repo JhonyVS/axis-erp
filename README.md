@@ -11,6 +11,9 @@ npm run dev      # http://localhost:5180
 
 ## What is in here
 
+- **A sign-in screen** with a canvas wave field painted in the live theme's colours, and a
+  deliberate delay that reports the steps it is working through rather than spinning.
+  Nothing is verified and the screen says so.
 - **A live component gallery** at `/components`: every primitive, interactive, with its
   hover, focus, press, disabled, loading and empty states reachable by actually using them.
 - **6 themes × light/dark**, switched with one click. Every colour is *derived* from a
